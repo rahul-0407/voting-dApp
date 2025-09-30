@@ -6,13 +6,17 @@ import {Link} from "react-router-dom"
 import PollCard from "../components/PollCard"
 import ShareModal from "../components/ShareModal"
 
+
+import development from "../assets/web-development-concept.png"
+import team from "../assets/diverse-team-meeting.png"
+
 export default function MyPolls() {
   const [myPolls, setMyPolls] = useState([
     {
       id: "poll-004",
       title: "Favorite Web Framework",
       description: "Which web framework do you prefer for building modern applications?",
-      image: "/web-development-concept.png",
+      image: development,
       endTime: "2025-02-01T23:59:59Z",
       totalVotes: 456,
       isActive: true,
@@ -23,7 +27,7 @@ export default function MyPolls() {
       id: "poll-005",
       title: "Team Meeting Time",
       description: "What time works best for our weekly team meetings?",
-      image: "/diverse-team-meeting.png",
+      image: team,
       endTime: "2025-01-25T17:00:00Z",
       totalVotes: 12,
       isActive: true,

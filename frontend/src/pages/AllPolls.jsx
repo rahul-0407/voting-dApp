@@ -5,13 +5,17 @@ import {Link} from "react-router-dom"
 // import Header from "@/components/header"
 import PollCard from "../components/PollCard"
 
+import abstract from "../assets/programming-code-abstract.png"
+import coffee from "../assets/pile-of-coffee-beans.png"
+import office from "../assets/modern-office-workspace.png"
+
 export default function AllPolls() {
   const [polls] = useState([
     {
       id: "poll-001",
       title: "Best Programming Language for 2025",
       description: "Vote for the programming language you think will dominate in 2025",
-      image: "/programming-code-abstract.png",
+      image: abstract,
       creator: "TechGuru",
       endTime: "2025-02-15T23:59:59Z",
       totalVotes: 1247,
@@ -22,7 +26,7 @@ export default function AllPolls() {
       id: "poll-002",
       title: "Favorite Coffee Type",
       description: "What's your go-to coffee choice?",
-      image: "/pile-of-coffee-beans.png",
+      image: coffee,
       creator: "CoffeeExpert",
       endTime: "2025-01-20T18:00:00Z",
       totalVotes: 892,
@@ -33,7 +37,7 @@ export default function AllPolls() {
       id: "poll-003",
       title: "Remote Work vs Office",
       description: "Where do you prefer to work?",
-      image: "/modern-office-workspace.png",
+      image: office,
       creator: "WorkLifeBalance",
       endTime: "2025-01-10T12:00:00Z",
       totalVotes: 2156,

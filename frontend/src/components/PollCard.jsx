@@ -10,7 +10,7 @@ export default function PollCard({ poll, showActions = false, onShare, onDelete 
 
   return (
     <div className="bg-white/5 backdrop-blur-sm rounded-lg overflow-hidden hover:bg-white/10 transition-all duration-300 group">
-      <Link href={`/poll/${poll.id}`}>
+      <Link to={`/poll/${poll.id}`}>
         <img
           src={poll.image || "/placeholder.svg?height=200&width=400&query=voting poll"}
           alt={poll.title}
@@ -19,7 +19,7 @@ export default function PollCard({ poll, showActions = false, onShare, onDelete 
       </Link>
 
       <div className="p-6">
-        <Link href={`/poll/${poll.id}`}>
+        <Link to={`/poll/${poll.id}`}>
           <h3 className="text-white font-medium mb-2 group-hover:text-white/90 cursor-pointer">{poll.title}</h3>
         </Link>
 
@@ -60,7 +60,7 @@ export default function PollCard({ poll, showActions = false, onShare, onDelete 
 
         {showActions && (
           <div className="flex gap-2 mt-4">
-            <Link href={`/poll/${poll.id}`} className="flex-1">
+            <Link to={`/poll/${poll.id}`} className="flex-1">
               <button className="w-full px-4 py-2 bg-white/10 text-white text-xs rounded-full hover:bg-white/20 transition-all duration-200">
                 View Details
               </button>

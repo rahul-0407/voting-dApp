@@ -123,7 +123,7 @@ export default function PollDetails() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black">
-        <Header />
+        {/* <Header /> */}
         <div className="pt-20 flex items-center justify-center">
           <div className="text-white">Loading poll...</div>
         </div>
@@ -134,7 +134,7 @@ export default function PollDetails() {
   if (!poll) {
     return (
       <div className="min-h-screen bg-black">
-        <Header />
+        {/* <Header /> */}
         <div className="pt-20 pb-12 px-6">
           <div className="max-w-4xl mx-auto text-center">
             <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center">
@@ -159,7 +159,7 @@ export default function PollDetails() {
 
   return (
     <div className="min-h-screen bg-black">
-      <Header />
+      {/* <Header /> */}
 
       <main className="pt-20 pb-12 px-6">
         <div className="max-w-4xl mx-auto">

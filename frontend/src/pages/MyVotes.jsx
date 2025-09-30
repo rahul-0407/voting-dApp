@@ -6,6 +6,10 @@ import { useNavigate, Link } from "react-router-dom"
 // import Header from "/components/header"
 import PollCard from "../components/PollCard"
 
+import abstract from "../assets/programming-code-abstract.png"
+import coffee from "../assets/pile-of-coffee-beans.png"
+import office from "../assets/modern-office-workspace.png"
+
 export default function MyVotes() {
   const navigate = useNavigate()
   const [filter, setFilter] = useState("all") // all, results-declared
@@ -16,7 +20,7 @@ export default function MyVotes() {
       id: "poll-001",
       title: "Best Programming Language for 2025",
       description: "Vote for the programming language you think will dominate in 2025",
-      image: "/programming-code-abstract.png",
+      image: abstract,
       creator: "TechGuru",
       votedAt: "2025-01-15T10:30:00Z",
       myVote: "JavaScript",
@@ -27,7 +31,7 @@ export default function MyVotes() {
       id: "poll-002",
       title: "Favorite Coffee Type",
       description: "What's your go-to coffee choice?",
-      image: "/pile-of-coffee-beans.png",
+      image: coffee,
       creator: "CoffeeExpert",
       votedAt: "2025-01-14T15:45:00Z",
       myVote: "Latte",
@@ -38,7 +42,7 @@ export default function MyVotes() {
       id: "poll-003",
       title: "Remote Work vs Office",
       description: "Where do you prefer to work?",
-      image: "/modern-office-workspace.png",
+      image: office,
       creator: "WorkLifeBalance",
       votedAt: "2025-01-08T09:15:00Z",
       myVote: "Remote Work",
