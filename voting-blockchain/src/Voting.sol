@@ -1,7 +1,21 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
+interface IZKVerifier {
+    function verifyProof(
+        uint256[2] memory a,
+        uint256[2][2] memory b,
+        uint256[2] memory c,
+        uint256[4] memory input
+    ) external view returns (bool);
+}
+
 contract PollFactory {
+    enum VotingMode{
+        Standard,
+        Anonymous
+    }
+
     enum Visibility {
         Public,
         Private
@@ -13,12 +27,14 @@ contract PollFactory {
         string question;
         string[] options;
         Visibility visible;
+        VotingMode votingMode;
         uint256 startTime;
         uint256 endTime;
         bool isActive;
         address[] allowedVoters;
         mapping(address => bool) hasVoted;
-        mapping(string => uint256) votes;
+        mapping(uint256 => uint256) votesByIndex;
+        mapping(bytes32 => bool) nullifierUsed;
         uint256 totalVotes;
     }
 
@@ -33,12 +49,12 @@ contract PollFactory {
     mapping(address => string[]) public userCreatedPolls;
     mapping(address => string[]) public userVotedPolls;
 
-    event PollCreated(
-        string indexed pollId, address indexed creator, Visibility visible, uint256 startTime, uint256 endTime
-    );
+    IZKVerifier public zkVerifier;
 
+    event PollCreated(string indexed pollId, address indexed creator, Visibility visible, VotingMode votingMode);
     event AllowedVotersAdded(string indexed pollId, address[] voters);
-    event VoteCasted(string indexed pollId, address indexed voter, string option);
+    event VoteCasted(string indexed pollId, address indexed voter, uint256 optionIndex);
+    event AnonymousVoteCasted(string indexed pollId, bytes32 nullifier);
     event PollEnded(string indexed pollId, string winningOption, uint256 winningVotes);
 
     modifier onlyCreator(string memory _pollId) {
@@ -69,6 +85,7 @@ contract PollFactory {
         string memory _question,
         string[] memory _options,
         Visibility _visible,
+        VotingMode _votingMode,
         uint256 _startTime,
         uint256 _endTime
     ) external validPollId(_pollId) {
@@ -86,6 +103,7 @@ contract PollFactory {
         newPoll.question = _question;
         newPoll.options = _options;
         newPoll.visible = _visible;
+        newPoll.votingMode = _votingMode;
         newPoll.startTime = _startTime;
         newPoll.endTime = _endTime;
         newPoll.isActive = true;
@@ -93,14 +111,14 @@ contract PollFactory {
         newPoll.totalVotes = 0;
 
         for (uint256 i = 0; i < _options.length; i++) {
-            newPoll.votes[_options[i]] = 0;
+            newPoll.votesByIndex[i] = 0;
         }
 
         pollIndex[_pollId] = index;
         pollExists[_pollId] = true;
         userCreatedPolls[msg.sender].push(_pollId);
 
-        emit PollCreated(_pollId, msg.sender, _visible, _startTime, _endTime);
+        emit PollCreated(_pollId, msg.sender, _visible, _votingMode);
     }
 
     function addAllowedVoter(string memory _pollId, address[] memory _voters) external onlyCreator(_pollId) {
@@ -117,39 +135,38 @@ contract PollFactory {
         emit AllowedVotersAdded(_pollId, _voters);
     }
 
-    function vote(string memory _pollId, string memory _option) external pollActive(_pollId) {
+
+    // Standard voting 
+    function vote(string memory _pollId, string memory _optionIndex) external pollActive(_pollId) {
         uint256 index = pollIndex[_pollId];
         Poll storage poll = allPolls[index];
 
+        require(poll.votingMode == VotingMode.Standard, "This poll requires anonymous voting");
         require(!poll.hasVoted[msg.sender], "Already voted");
-        require(isValidOption(poll, _option), "Invalid option");
+        require(_optionIndex < poll.options.length, "Invalid option index");
+        // require(isValidOption(poll, _option), "Invalid option");
 
         if (poll.visible == Visibility.Private) {
             require(isAllowedVoter(poll, msg.sender), "Not authorized to vote in this private poll");
         }
 
         poll.hasVoted[msg.sender] = true;
-        poll.votes[_option]++;
+        poll.votesByIndex[_optionIndex]++;
         poll.totalVotes++;
+        userVotedPolls[msg.sender].push(_pollId)
 
-        bool alreadyAdded = false;
-        string[] storage userVotes = userVotedPolls[msg.sender];
-        for (uint256 i = 0; i < userVotes.length; i++) {
-            if (keccak256(bytes(userVotes[i])) == keccak256(bytes(_pollId))) {
-                alreadyAdded = true;
-                break;
-            }
-        }
 
-        if (!alreadyAdded) {
-            userVotedPolls[msg.sender].push(_pollId);
-        }
-
-        emit VoteCasted(_pollId, msg.sender, _option);
+        emit VoteCasted(_pollId, msg.sender, _optionIndex);
 
         if(block.timestamp >= poll.endTime) {
             terminatePoll(_pollId, index);
         }
+    }
+
+
+    // ZK ANONYMOUS VOTING
+    function voteAnonymous(string memory _pollId, uint256 _optionIndex, bytes32 _nullifier,  uint256[2] memory a, uint256[2][2] memory b, uint256[2] memory c) external {
+        
     }
 
     function endPoll(string memory _pollId) external {
@@ -187,14 +204,14 @@ contract PollFactory {
         emit PollEnded(_pollId, winningOption, maxVotes);
     }
 
-    function isValidOption(Poll storage _poll, string memory _option) internal view returns (bool) {
-        for (uint256 i = 0; i < _poll.options.length; i++) {
-            if (keccak256(bytes(_poll.options[i])) == keccak256(bytes(_option))) {
-                return true;
-            }
-        }
-        return false;
-    }
+    // function isValidOption(Poll storage _poll, string memory _option) internal view returns (bool) {
+    //     for (uint256 i = 0; i < _poll.options.length; i++) {
+    //         if (keccak256(bytes(_poll.options[i])) == keccak256(bytes(_option))) {
+    //             return true;
+    //         }
+    //     }
+    //     return false;
+    // }
 
     function isAllowedVoter(Poll storage _poll, address _voter) internal view returns (bool) {
         for (uint256 i = 0; i < _poll.allowedVoters.length; i++) {
