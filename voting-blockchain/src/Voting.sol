@@ -319,5 +319,73 @@ contract PollFactory {
         return _createPollData(poll, user, showResult);
     }
 
+    function canUserVote(string memory _pollId, address _user) 
+        external 
+        view 
+        returns (bool canVote, string memory reason) 
+    {
+        if (!pollExists[_pollId]) {
+            return (false, "Poll does not exist");
+        }
+        
+        uint256 index = pollIndex[_pollId];
+        Poll storage poll = allPolls[index];
+        
+        if (!poll.isActive) {
+            return (false, "Poll has ended");
+        }
+        
+        if (block.timestamp < poll.startTime) {
+            return (false, "Poll has not started yet");
+        }
+        
+        if (block.timestamp > poll.endTime) {
+            return (false, "Poll time has expired");
+        }
+        
+        if (poll.hasVoted[_user]) {
+            return (false, "Already voted in this poll");
+        }
+        
+        if (poll.visible == Visibility.Private && !isAllowedVoter(poll, _user)) {
+            return (false, "Not authorized to vote in this private poll");
+        }
+        
+        return (true, "Can vote");
+    }
+
+    function getTotalPolls() external view returns (uint256) {
+        return allPolls.length;
+    }
+
+    function getPollsByStatus(address _user) 
+        external 
+        view 
+        returns (
+            uint256 activeCount,
+            uint256 endedCount,
+            uint256 createdCount,
+            uint256 votedCount
+        ) 
+    {
+        createdCount = userCreatedPolls[_user].length;
+        votedCount = userVotedPolls[_user].length;
+        
+        for (uint256 i = 0; i < allPolls.length; i++) {
+            Poll storage poll = allPolls[i];
+            
+            // Count public active polls
+            if (poll.visible == Visibility.Public) {
+                if (poll.isActive && 
+                    block.timestamp >= poll.startTime && 
+                    block.timestamp <= poll.endTime) {
+                    activeCount++;
+                } else {
+                    endedCount++;
+                }
+            }
+        }
+    }
+
 
 }
