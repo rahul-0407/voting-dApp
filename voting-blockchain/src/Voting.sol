@@ -306,5 +306,18 @@ contract PollFactory {
         });
     }
 
+    fucnction getPollDetail(string memory ,pollId, address user) external view return (PollData memory) {
+        require(pollExists[_pollId], "Poll does not exist");
+        uint256 index = pollIndex[_pollId];
+        Poll storage poll = allPolls[index];
+
+        if(poll.visible == Visibility.Private){
+            require(poll.creator == user || isAllowedVoter(poll, user), "Not authorized to view the private polls");
+        }
+
+        boll showResult = poll.creator == user || poll.hasVoted[user];
+        return _createPollData(poll, user, showResult);
+    }
+
 
 }
