@@ -166,7 +166,32 @@ contract PollFactory {
 
     // ZK ANONYMOUS VOTING
     function voteAnonymous(string memory _pollId, uint256 _optionIndex, bytes32 _nullifier,  uint256[2] memory a, uint256[2][2] memory b, uint256[2] memory c) external {
-        
+        uint256 index = pollIndex[_pollId];
+        Poll storage poll = allPolls[index];
+
+        require(pollExists[_pollId], "Poll does not exist");
+        require(poll.isActive, "Poll is not active");
+        require(block.timestamp >= poll.startTime, "Poll has not started");
+        require(block.timestamp <= poll.endTime, "Poll has ended");
+        require(poll.votingMode == VotingMode.Anonymous, "This poll uses standard voting");
+        require(!poll.nullifierUsed[_nullifier], "Already voted with this nullifier");
+        require(_optionIndex < poll.options.length, "Invalid option index");
+
+        uint256[4] memory publicInputs = [
+            uint256(uint160(address(this))),
+            uint256(keccak256(bytes(_pollId))),
+            uint256(_nullifier),
+            _optionIndex;
+        ]
+
+        require(zkVerifier.verifyProof(a,b,c,publicInputs),"Invalid ZK Proof");
+
+        poll.nullifierUsed[_nullifier] = true;
+        poll.votesByIndex[_optionIndex]++;
+        poll.totalVotes++;
+
+        emit AnonymousVoteCasted(_pollId, _nullifier);
+
     }
 
     function endPoll(string memory _pollId) external {
@@ -334,6 +359,35 @@ contract PollFactory {
 
         boll showResult = poll.creator == user || poll.hasVoted[user];
         return _createPollData(poll, user, showResult);
+    }
+
+    function getPollResults(string memory _pollId) 
+        external view 
+        returns (string[] memory options, uint256[] memory voteCounts) 
+    {
+        uint256 index = pollIndex[_pollId];
+        Poll storage poll = allPolls[index];
+        
+        options = poll.options;
+        voteCounts = new uint256[](options.length);
+        
+        for (uint256 i = 0; i < options.length; i++) {
+            voteCounts[i] = poll.votesByIndex[i];
+        }
+    }
+
+    function hasUserVoted(string memory _pollId, address _user) 
+        external view returns (bool) 
+    {
+        uint256 index = pollIndex[_pollId];
+        return allPolls[index].hasVoted[_user];
+    }
+
+    function isNullifierUsed(string memory _pollId, bytes32 _nullifier) 
+        external view returns (bool) 
+    {
+        uint256 index = pollIndex[_pollId];
+        return allPolls[index].nullifierUsed[_nullifier];
     }
 
     function canUserVote(string memory _pollId, address _user) 
