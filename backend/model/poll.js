@@ -16,7 +16,7 @@ const optionSchema = new mongoose.Schema(
 
 const pollSchema = new mongoose.Schema({
   pollId: { type: String, required: true, unique: true, index: true },
-
+  img:{type:String, required:true},
   question: { type: String, required: true },
   options: { type: [optionSchema], required: true },
   visibility: {

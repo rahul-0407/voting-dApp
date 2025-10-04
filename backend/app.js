@@ -1,6 +1,7 @@
 import express, {json} from "express";
 import "dotenv/config";
 import cors from "cors";
+import authRoutes from './routes/authRoutes.js';
 import {errorMiddleware} from "./middleware/error.js"
 import cookieParser from "cookie-parser";
 
@@ -22,6 +23,8 @@ app.use(cors({
     },
     credentials:true,
 }))
+
+app.use("/api/auth/v1",authRoutes)
 
 app.get("/", (req, res) => {
   res.send("Working");
