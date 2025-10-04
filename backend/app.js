@@ -2,6 +2,7 @@ import express, {json} from "express";
 import "dotenv/config";
 import cors from "cors";
 import authRoutes from './routes/authRoutes.js';
+import pollRouter from "./routes/poll.js"
 import {errorMiddleware} from "./middleware/error.js"
 import cookieParser from "cookie-parser";
 
@@ -25,6 +26,7 @@ app.use(cors({
 }))
 
 app.use("/api/auth/v1",authRoutes)
+app.use("/api/auth/v1",pollRouter)
 
 app.get("/", (req, res) => {
   res.send("Working");
