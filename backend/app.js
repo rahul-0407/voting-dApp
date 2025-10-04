@@ -1,7 +1,7 @@
 import express, {json} from "express";
 import "dotenv/config";
 import cors from "cors";
-import {errorMiddleware} from "./middlewares/error.js"
+import {errorMiddleware} from "./middleware/error.js"
 import cookieParser from "cookie-parser";
 
 const app = express();
