@@ -1,5 +1,5 @@
 import express from "express";
-import {} from "../controllers/poll.js"
+import {createPoll,voteInPoll,getAllPublicPolls,getPollById,getPollCreatedByUser,getUserVotedPoll,  getPollDetail} from "../controllers/poll.js"
 import upload from "../middlewares/multer.js"
 import { authenticateUser } from '../middlewares/auth.js';
 

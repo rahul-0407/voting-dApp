@@ -26,7 +26,7 @@ app.use(cors({
 }))
 
 app.use("/api/auth/v1",authRoutes)
-app.use("/api/auth/v1",pollRouter)
+app.use("/api/poll/v1",pollRouter)
 
 app.get("/", (req, res) => {
   res.send("Working");
