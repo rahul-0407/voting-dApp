@@ -1,6 +1,6 @@
-import User from "../models/user.js";
+import User from "../model/user.js";
 import { sendCookies } from "../utils/sendCookie.js";
-import { ErrorHandler } from "../middlewares/error.js";
+import { ErrorHandler } from "../middleware/error.js";
 
 export const connectWallet = async (req, res, next) => {
   try {
