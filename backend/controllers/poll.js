@@ -67,6 +67,7 @@ export const createPoll = async (req, res, next) => {
 
 export const voteInPoll = async (req, res, next) => {
   try {
+    console.log("hoi")
   } catch (error) {
     console.log(error);
     next(new ErrorHandler("Failed to perform task", 500));
