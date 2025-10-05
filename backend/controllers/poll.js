@@ -1,6 +1,8 @@
 import Poll from "../model/poll.js";
 import { sendCookies } from "../utils/sendCookie.js";
 import { ErrorHandler } from "../middleware/error.js";
+import { v2 as cloudinary } from "cloudinary";
+import mongoose from "mongoose";
 
 export const createPoll = async (req, res, next) => {
   try {
