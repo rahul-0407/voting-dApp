@@ -38,6 +38,7 @@ const pollSchema = new mongoose.Schema({
   endTime: { type: Number, required: true },
   isActive: { type: Boolean, default: true },
   totalVotes: { type: Number, default: 0 },
+  voters: [{ type: mongoose.Schema.Types.ObjectId, ref: UserActivation }],
 });
 
 export default mongoose.model("Poll", pollSchema);
