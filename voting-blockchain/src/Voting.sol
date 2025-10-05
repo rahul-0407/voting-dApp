@@ -141,7 +141,7 @@ contract PollFactory {
 
 
     // Standard voting 
-    function vote(string memory _pollId, string memory _optionIndex) external pollActive(_pollId) {
+    function vote(string memory _pollId, uint256  _optionIndex) external pollActive(_pollId) {
         uint256 index = pollIndex[_pollId];
         Poll storage poll = allPolls[index];
 
@@ -157,7 +157,7 @@ contract PollFactory {
         poll.hasVoted[msg.sender] = true;
         poll.votesByIndex[_optionIndex]++;
         poll.totalVotes++;
-        userVotedPolls[msg.sender].push(_pollId)
+        userVotedPolls[msg.sender].push(_pollId);
 
 
         emit VoteCasted(_pollId, msg.sender, _optionIndex);
@@ -181,8 +181,8 @@ contract PollFactory {
             uint256(uint160(address(this))),
             uint256(keccak256(bytes(_pollId))),
             uint256(_nullifier),
-            _optionIndex;
-        ]
+            _optionIndex
+        ];
 
         require(zkVerifier.verifyProof(a,b,c,publicInputs),"Invalid ZK Proof");
 
@@ -250,12 +250,13 @@ contract PollFactory {
     //     return false;
     // }
 
-    struct PollData{
+    struct PollData {
         string pollId;
         address creator;
         string question;
         string[] options;
         Visibility visible;
+        VotingMode votingMode;
         uint256 startTime;
         uint256 endTime;
         bool isActive;
