@@ -1,6 +1,6 @@
-import Poll from "../models/poll.js";
+import Poll from "../model/poll.js";
 import { sendCookies } from "../utils/sendCookie.js";
-import { ErrorHandler } from "../middlewares/error.js";
+import { ErrorHandler } from "../middleware/error.js";
 
 export const createPoll = async (req, res, next) => {
   try {

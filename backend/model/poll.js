@@ -31,14 +31,14 @@ const pollSchema = new mongoose.Schema({
   },
   creator: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: UserActivation,
+    ref: "User",
     required: true,
   },
   startTime: { type: Number, required: true },
   endTime: { type: Number, required: true },
   isActive: { type: Boolean, default: true },
   totalVotes: { type: Number, default: 0 },
-  voters: [{ type: mongoose.Schema.Types.ObjectId, ref: UserActivation }],
+  voters: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 });
 
 export default mongoose.model("Poll", pollSchema);
