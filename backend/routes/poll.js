@@ -5,7 +5,7 @@ import { authenticateUser } from '../middlewares/auth.js';
 
 const pollRouter  = express.Router();
 
-pollRouter.post("/createPoll", createPoll);
+pollRouter.post("/createPoll", upload.fields([{name:'image0', maxCount:1}]),createPoll);
 pollRouter.post("/voteInPoll", voteInPoll);
 pollRouter.get("/allPublicPolls", getAllPublicPolls)
 pollRouter.get("privatePollById/:id", getPollById);
