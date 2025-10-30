@@ -2,8 +2,8 @@ import React, { createContext, useEffect, useState } from "react";
 import { ethers } from "ethers";
 // import { getContract } from "../utils/contract";
 import axios from "axios";
-import { generateVoteProof } from "../utils/zkProof";
-import { getProviderAndSigner } from "../config";
+// import { generateVoteProof } from "../utils/zkProof";
+// import { getProviderAndSigner } from "../config";
 import { getContract } from "../utils/contract";
 
 export const MainContext = createContext();

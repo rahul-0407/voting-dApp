@@ -7,7 +7,7 @@ import Header from "../components/Navbar";
 import Breadcrumb from "../components/Breadcrumb";
 import { getContract } from "../utils/contract";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { BACKEND_URL } from "../config";
+// import { BACKEND_URL } from "../config";
 
 export default function CreatePoll() {
   const navigate = useNavigate();
