@@ -7,9 +7,9 @@ const pollRouter  = express.Router();
 
 pollRouter.post("/createPoll",authenticateUser, upload.fields([{name:'image0', maxCount:1}]),createPoll);
 pollRouter.post("/voteInPoll",authenticateUser, voteInPoll);
-pollRouter.post("/vote-anonymous", authenticateUser, voteInPollAnonymous);
+// pollRouter.post("/vote-anonymous", authenticateUser, voteInPollAnonymous);
 pollRouter.get("/allPublicPolls", getAllPublicPolls)
-pollRouter.get("/privatePollById/:pollId", getPollById);
+// pollRouter.get("/privatePollById/:pollId", getPollById);
 pollRouter.get("/getCreatedPoll",authenticateUser, getPollCreatedByUser);
 pollRouter.get("/getVotedPoll",authenticateUser, getUserVotedPoll);
 pollRouter.get("/pollDetail/:pollId",authenticateUser,getPollDetail);

@@ -32,7 +32,7 @@ export default function PollDetails() {
 
         console.log("🔗 Connected contract:", contract.address);
         console.log("👤 Signer address:", signerAddress);
-        console.log("hii")
+        console.log("hii");
 
         const cleanPollId = pollId?.trim() || "";
 
@@ -40,8 +40,18 @@ export default function PollDetails() {
         console.log("🔍 Clean pollId:", cleanPollId);
         console.log("🔍 PollId bytes:", new TextEncoder().encode(cleanPollId));
 
-        const chainPoll = await contract.getPollById(cleanPollId, signerAddress);
+        const chainPoll = await contract.getPollById(
+          cleanPollId,
+          signerAddress
+        );
         console.log("🧠 Raw chain poll:", chainPoll);
+
+        const visibility = chainPoll.visible === 0n ? "Public" : "Private";
+
+        // ✅ Navigate based on visibility
+        if (visibility === "Private"){
+          navigate(`/private-poll/${cleanPollId}`);
+        }
 
         if (!chainPoll || !chainPoll.pollId) {
           setError("Poll not found on blockchain");
@@ -167,14 +177,14 @@ export default function PollDetails() {
   return (
     <div className="min-h-screen bg-black">
       <PollMain
-              poll={poll}
-              hasVoted={hasVoted}
-              userVote={userVote}
-              shareModal={shareModal}
-              setShareModal={setShareModal}
-              handleVote={handleVote}
-              navigate={navigate}
-            />
+        poll={poll}
+        hasVoted={hasVoted}
+        userVote={userVote}
+        shareModal={shareModal}
+        setShareModal={setShareModal}
+        handleVote={handleVote}
+        navigate={navigate}
+      />
       <ShareModal
         poll={poll}
         isOpen={shareModal.isOpen}

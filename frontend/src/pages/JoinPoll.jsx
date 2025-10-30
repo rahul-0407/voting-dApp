@@ -23,27 +23,9 @@ export default function JoinPoll() {
     setError("");
 
     try {
-      // ✅ Connect to contract (same as PollDetails.jsx)
-      const { contract, signerAddress } = await getContract(true);
-      if (!contract) throw new Error("Contract not loaded.");
-      if (!signerAddress) throw new Error("Wallet not connected.");
-
-      const cleanPollId = pollId.trim();
-      const chainPoll = await contract.getPollById(cleanPollId, signerAddress);
-
-      if (!chainPoll || !chainPoll.pollId) {
-        throw new Error("Poll not found on blockchain.");
-      }
-
-      // ✅ Determine visibility (same logic as PollDetails)
-      const visibility = chainPoll.visible === 0n ? "Public" : "Private";
-
-      // ✅ Navigate based on visibility
-      if (visibility === "Public") {
-        navigate(`/poll/${cleanPollId}`);
-      } else {
-        navigate(`/private-poll/${cleanPollId}`);
-      }
+      if (pollId.trim()) {
+      navigate(`/poll/${pollId.trim()}`)
+    }
     } catch (err) {
       console.error("❌ Error joining poll:", err);
       setError(err.message || "Poll not found or unable to join.");

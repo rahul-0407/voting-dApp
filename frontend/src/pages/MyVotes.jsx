@@ -1,19 +1,106 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useContext } from "react"
 import { useNavigate, Link } from "react-router-dom"
-// import Link from "next/link"
-// import Header from "/components/header"
 import PollCard from "../components/PollCard"
-
+import { getContract } from "../utils/contract";
 import abstract from "../assets/programming-code-abstract.png"
 import coffee from "../assets/pile-of-coffee-beans.png"
 import office from "../assets/modern-office-workspace.png"
+import { MainContext } from "../context/MainContext";
 
 export default function MyVotes() {
   const navigate = useNavigate()
+  const [myVotedPolls, setMyVotedPolls] = useState([]);
   const [filter, setFilter] = useState("all") // all, results-declared
   const [pollId, setPollId] = useState("")
+  const { walletAddress } = useContext(MainContext);
+
+  useEffect(() => {
+      if (walletAddress) fetchMyPolls();
+    }, [walletAddress]);
+
+    const fetchMyPolls = async () => {
+    // console.log("🔍 Fetching My Polls from backend + contract...");
+    setLoading(true);
+    try {
+      // --- 1️⃣ Fetch from Backend ---
+      let backendPolls = [];
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/poll/v1/getVotedPoll`,
+          { withCredentials:true}
+        );
+        if (res.data?.success && Array.isArray(res.data.polls)) {
+          backendPolls = res.data.polls;
+          console.log("✅ Backend polls fetched:", backendPolls.length);
+        } else {
+          console.warn("⚠️ Unexpected backend response:", res.data);
+        }
+      } catch (err) {
+        console.error("❌ Backend fetch failed:", err.message);
+      }
+
+      // --- 2️⃣ Fetch from Blockchain ---
+      let blockchainPolls = [];
+      try {
+        const { contract, signerAddress } = await getContract(true);
+        if (!contract) throw new Error("❌ Contract instance not found.");
+        if (!signerAddress)
+          throw new Error("❌ Wallet not connected. Please connect wallet.");
+
+        // console.log("🧩 Contract loaded:", contract.address);
+        // console.log("👤 Fetching polls for:", signerAddress);
+
+        const fetchedPolls = await contract.getMyVotedPolls(signerAddress);
+        console.log("✅ Blockchain polls fetched:", fetchedPolls);
+
+        blockchainPolls = fetchedPolls.map((p) => {
+          const start = Number(p.startTime) * 1000;
+          const end = Number(p.endTime) * 1000;
+          const now = Date.now();
+          return {
+            pollId: p.pollId,
+            title: p.question,
+            creator: p.creator,
+            startTime: start,
+            endTime: end,
+            totalVotes: Number(p.totalVotes),
+            isActive: now >= start && now <= end && p.isActive,
+            visibility: p.visible === 0n ? "Public" : "Private",
+            options: p.options,
+          };
+        });
+      } catch (error) {
+        console.error("❌ Blockchain fetch error:", error);
+        alert(
+          `⚠️ Unable to fetch blockchain polls:\n\n${
+            error.message || "Unknown error"
+          }\n\nCheck console for details.`
+        );
+      }
+
+      // --- 3️⃣ Merge Data ---
+      const merged = blockchainPolls.map((chainPoll) => {
+        const backendMatch = backendPolls.find(
+          (b) => b.pollId === chainPoll.pollId
+        );
+        return {
+          ...chainPoll,
+          img: backendMatch?.img || "/placeholder.svg",
+          description: backendMatch?.description || "No description available",
+        };
+      });
+
+      console.log("✅ Final merged polls:", merged);
+      setMyVotedPolls(merged);
+    } catch (err) {
+      console.error("❌ Unexpected error in fetchMyPolls:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const [votedPolls] = useState([
     {
@@ -53,9 +140,10 @@ export default function MyVotes() {
     },
   ])
 
-  const filteredPolls = filter === "results-declared" ? votedPolls.filter((poll) => !poll.isActive) : votedPolls
+  const filteredPolls = filter === "results-declared" ? myVotedPolls.filter((poll) => !poll.isActive) : myVotedPolls
   const sortedPolls = filteredPolls.sort((a, b) => new Date(b.votedAt) - new Date(a.votedAt))
 
+  // ✅ Added join poll function here (no extra change)
   const handleJoinPoll = (e) => {
     e.preventDefault()
     if (pollId.trim()) {
@@ -65,8 +153,6 @@ export default function MyVotes() {
 
   return (
     <div className="min-h-screen bg-black">
-      {/* <Header /> */}
-
       <main className="pt-20 pb-12 px-6">
         <div className="max-w-6xl mx-auto">
           {/* Page Header */}
@@ -84,7 +170,7 @@ export default function MyVotes() {
                   filter === "all" ? "bg-white text-black" : "bg-white/10 text-white hover:bg-white/20"
                 }`}
               >
-                All Votes ({votedPolls.length})
+                All Votes ({myVotedPolls.length})
               </button>
               <button
                 onClick={() => setFilter("results-declared")}
@@ -92,12 +178,12 @@ export default function MyVotes() {
                   filter === "results-declared" ? "bg-white text-black" : "bg-white/10 text-white hover:bg-white/20"
                 }`}
               >
-                Results Declared ({votedPolls.filter((p) => !p.isActive).length})
+                Results Declared ({myVotedPolls.filter((p) => !p.isActive).length})
               </button>
             </div>
           </div>
 
-          {/* Enter Poll ID Section */}
+          {/* ✅ Added Join Poll by ID Section */}
           <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6 mb-12">
             <h3 className="text-white font-medium mb-4">Join Poll by ID</h3>
             <form onSubmit={handleJoinPoll} className="flex gap-4">
