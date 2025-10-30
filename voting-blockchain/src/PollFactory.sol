@@ -274,7 +274,7 @@ contract PollFactory {
         uint256 index = pollIndex[_pollId];
         Poll storage poll = allPolls[index];
 
-        return _createPollData(poll, _user, true);
+        return _createPollData(poll, _user, false);
     }
 
     function _createPollData(Poll storage _poll, address _user, bool _showResults)
