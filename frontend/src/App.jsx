@@ -8,8 +8,11 @@ import AllPolls from "./pages/AllPolls"
 import MyPolls from "./pages/MyPolls"
 import MyVotes from "./pages/MyVotes"
 import CreatePoll from "./pages/CreatePoll"
+import Login from "./pages/Login"
 import PollDetails from "./pages/PollDetail"
+import PrivatePollDetail from "./pages/PrivatePollDetail"
 import EnterPoll from "./pages/JoinPoll"
+import Demo from "./pages/Demo"
 // import "./App.css"
 
 function App() {
@@ -57,7 +60,6 @@ function App() {
   // }, [])
 
   return (
-    <Router>
       <div className="App">
         <Navbar />
         <Routes>
@@ -65,12 +67,14 @@ function App() {
           <Route path="/polls" element={<AllPolls />} />
           <Route path="/my-polls" element={<MyPolls />} />
           <Route path="/my-votes" element={<MyVotes />} />
+          <Route path="/demo" element={<Demo />} />
+          <Route path="/login" element={<Login/>}/>
           <Route path="/create-poll" element={<CreatePoll />} />
           <Route path="/poll/:id" element={<PollDetails />} />
+          <Route path="/private-poll/:id" element={<PollDetails />} />
           <Route path="/join-poll" element={<EnterPoll />} />
         </Routes>
       </div>
-    </Router>
   )
 }
 

@@ -33,6 +33,24 @@ app.get("/", (req, res) => {
 });
 
 
+
+// app.post('/api/can-vote', async (req, res) => {
+//     const { pollId, userAddress } = req.body;
+    
+//     // Check your database for private poll permissions
+//     // This is where you handle the allowed voters logic
+//     const isAllowed = await checkPrivatePollAccess(pollId, userAddress);
+    
+//     res.json({ canVote: isAllowed });
+// });
+
+// async function checkPrivatePollAccess(pollId, userAddress) {
+//     // TODO: Implement your database logic
+//     // For now, return true
+//     return true;
+// }
+
+
 app.use(errorMiddleware);
 
 export default app;

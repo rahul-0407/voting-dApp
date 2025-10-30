@@ -1,6 +1,7 @@
-"use client";
 
 import { Link, useLocation } from "react-router-dom";
+import { MainContext } from "../context/MainContext";
+import { useContext } from "react";
 
 export default function Header() {
   const location = useLocation();
@@ -11,6 +12,12 @@ export default function Header() {
     { name: "My Votes", path: "/my-votes" },
     { name: "Join Poll", path: "/join-poll" },
   ];
+
+  const { walletAddress, setWalletAddress,connect,disconnect } = useContext(MainContext);
+  
+    function shortAddress(addr) {
+      return addr ? `${addr.slice(0, 5)}...${addr.slice(-3)}` : "";
+    }
 
   return (
     <header className="fixed w-full z-20 flex items-center justify-between p-6 ">
@@ -62,12 +69,12 @@ export default function Header() {
             />
           </svg>
         </button>
-        <Link
-          to="/login"
+        <button
+          onClick={connect}
           className="px-6 py-2 rounded-full bg-white text-black font-normal text-xs transition-all duration-300 hover:bg-white/90 cursor-pointer h-8 flex items-center z-10"
         >
-          Login
-        </Link>
+          {walletAddress ? shortAddress(walletAddress) : "Login"}
+        </button>
       </div>
     </header>
   );

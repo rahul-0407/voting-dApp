@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 
 export const createPoll = async (req, res, next) => {
   try {
-    const { question, options, visibility, votingMode, startTime, endTime } = req.body;
+    const { question, description, options, visibility, startTime, endTime } = req.body;
 
     const creator = req.userId;
     if (!creator) return next(new ErrorHandler("User not authenticated", 401));
@@ -34,7 +34,7 @@ export const createPoll = async (req, res, next) => {
       resource_type: "auto",
     });
 
-    const imageUrl = result.secure_url; 
+    const imageUrl = result.secure_url;
 
     const pollId = "poll_" + Date.now().toString(36);
 
@@ -42,12 +42,13 @@ export const createPoll = async (req, res, next) => {
       pollId,
       img: imageUrl,
       question,
+      description, // ✅ added
       options: formattedOptions,
       visibility: visibility || "Public",
-      votingMode: votingMode || "Standard",
       creator: new mongoose.Types.ObjectId(creator),
       startTime: Number(startTime),
       endTime: Number(endTime),
+      isActive: true,
       totalVotes: 0,
     });
 
@@ -66,11 +67,11 @@ export const createPoll = async (req, res, next) => {
   }
 };
 
-
-export const voteInPoll = async (req, res, next) => {
+export const voteInPollAnonymous = async (req, res, next) => {
   try {
-    const { pollId, optionIndex } = req.body;
+    const { pollId, optionIndex, proof, nullifier, publicSignals } = req.body;
     const userId = req.userId;
+    if (!userId) return next(new ErrorHandler("User not authenticated", 401));
 
     const poll = await Poll.findOne({ pollId });
     if (!poll) return next(new ErrorHandler("Poll not found", 404));
@@ -80,17 +81,53 @@ export const voteInPoll = async (req, res, next) => {
       return next(new ErrorHandler("Poll is not active", 400));
     }
 
+    // ✅ Check if this nullifier already exists
+    if (poll.nullifiers.includes(nullifier)) {
+      return next(new ErrorHandler("This vote has already been cast (nullifier exists)", 400));
+    }
+
+    console.log("🔐 ZK Proof received:", { proof, publicSignals, nullifier });
+
+    poll.options[optionIndex].voteCount += 1;
+    poll.nullifiers.push(nullifier);
+    poll.totalVotes += 1;
+
+    await poll.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Anonymous vote recorded successfully",
+      poll: {
+        pollId: poll.pollId,
+        totalVotes: poll.totalVotes,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    next(new ErrorHandler("Failed to perform task", 500));
+  }
+};
+
+export const voteInPoll = async (req, res, next) => {
+  try {
+    const { pollId, optionIndex } = req.body;
+    const userId = req.userId;
+    console.log(userId);
+
+    const poll = await Poll.findOne({ pollId });
+    if (!poll) return next(new ErrorHandler("Poll not found", 404));
+
+    const now = Date.now();
+    if (poll.startTime > now || poll.endTime < now) {
+      return next(new ErrorHandler("Poll is not active", 404));
+    }
+
     if (poll.voters.includes(userId)) {
       return next(new ErrorHandler("You have already voted", 400));
     }
 
-    // Increment vote count
     poll.options[optionIndex].voteCount += 1;
-
-    // Add user to voters array
     poll.voters.push(userId);
-
-    // Increment total votes
     poll.totalVotes += 1;
 
     await poll.save();
@@ -110,27 +147,25 @@ export const getAllPublicPolls = async (req, res, next) => {
   try {
     const now = Date.now();
 
-    // Fetch all polls that are public and active (within start/end time)
     const polls = await Poll.find({
       visibility: "Public",
       isActive: true,
       startTime: { $lte: now },
       endTime: { $gte: now },
     })
-      .populate("creator", "walletAddress") // populate creator's wallet address or name
-      .sort({ startTime: -1 }); // latest polls first
+      .populate("creator", "walletAddress")
+      .sort({ startTime: -1 });
 
-    // Format the response
     const formattedPolls = polls.map((poll) => ({
       pollId: poll.pollId,
       question: poll.question,
+      description: poll.description, // ✅ added
       img: poll.img,
       options: poll.options.map((opt) => ({
         name: opt.name,
         voteCount: opt.voteCount,
       })),
       visibility: poll.visibility,
-      votingMode: poll.votingMode,
       creator: poll.creator ? poll.creator.walletAddress : null,
       startTime: poll.startTime,
       endTime: poll.endTime,
@@ -153,22 +188,19 @@ export const getPollById = async (req, res, next) => {
     const { pollId } = req.params;
     if (!pollId) return next(new ErrorHandler("Poll ID is required", 400));
 
-    const poll = await Poll.findOne({ pollId })
-      .populate("creator", "walletAddress"); // fetch creator's wallet address
-
+    const poll = await Poll.findOne({ pollId }).populate("creator", "walletAddress");
     if (!poll) return next(new ErrorHandler("Poll not found", 404));
 
-    // Format response
     const formattedPoll = {
       pollId: poll.pollId,
       question: poll.question,
+      description: poll.description, // ✅ added
       img: poll.img,
       options: poll.options.map((opt) => ({
         name: opt.name,
         voteCount: opt.voteCount,
       })),
       visibility: poll.visibility,
-      votingMode: poll.votingMode,
       creator: poll.creator ? poll.creator.walletAddress : null,
       startTime: poll.startTime,
       endTime: poll.endTime,
@@ -188,25 +220,23 @@ export const getPollById = async (req, res, next) => {
 
 export const getPollCreatedByUser = async (req, res, next) => {
   try {
-    const userId = req.userId; // From authentication middleware
+    const userId = req.userId;
     if (!userId) return next(new ErrorHandler("User not authenticated", 401));
 
-    // Find all polls created by this user
     const polls = await Poll.find({ creator: userId })
-      .populate("creator", "walletAddress") // optional, just to include wallet
-      .sort({ startTime: -1 }); // latest polls first
+      .populate("creator", "walletAddress")
+      .sort({ startTime: -1 });
 
-    // Format the response
     const formattedPolls = polls.map((poll) => ({
       pollId: poll.pollId,
       question: poll.question,
+      description: poll.description, // ✅ added
       img: poll.img,
       options: poll.options.map((opt) => ({
         name: opt.name,
         voteCount: opt.voteCount,
       })),
       visibility: poll.visibility,
-      votingMode: poll.votingMode,
       creator: poll.creator ? poll.creator.walletAddress : null,
       startTime: poll.startTime,
       endTime: poll.endTime,
@@ -236,13 +266,13 @@ export const getUserVotedPoll = async (req, res, next) => {
     const formattedPolls = polls.map((poll) => ({
       pollId: poll.pollId,
       question: poll.question,
+      description: poll.description, // ✅ added
       img: poll.img,
       options: poll.options.map((opt) => ({
         name: opt.name,
         voteCount: opt.voteCount,
       })),
       visibility: poll.visibility,
-      votingMode: poll.votingMode,
       creator: poll.creator ? poll.creator.walletAddress : null,
       startTime: poll.startTime,
       endTime: poll.endTime,
@@ -260,39 +290,34 @@ export const getUserVotedPoll = async (req, res, next) => {
   }
 };
 
-
 export const getPollDetail = async (req, res, next) => {
   try {
     const { pollId } = req.params;
-    const userId = req.userId; // from auth middleware
+    const userId = req.userId;
 
     if (!pollId) return next(new ErrorHandler("Poll ID is required", 400));
 
-    const poll = await Poll.findOne({ pollId })
-      .populate("creator", "walletAddress"); // get creator info
-
+    const poll = await Poll.findOne({ pollId }).populate("creator", "walletAddress");
     if (!poll) return next(new ErrorHandler("Poll not found", 404));
 
-    // Check if the requesting user has already voted
     const hasVoted = userId ? poll.voters.includes(userId) : false;
 
-    // Format response
     const formattedPoll = {
       pollId: poll.pollId,
       question: poll.question,
+      description: poll.description, // ✅ added
       img: poll.img,
       options: poll.options.map((opt) => ({
         name: opt.name,
         voteCount: opt.voteCount,
       })),
       visibility: poll.visibility,
-      votingMode: poll.votingMode,
       creator: poll.creator ? poll.creator.walletAddress : null,
       startTime: poll.startTime,
       endTime: poll.endTime,
       totalVotes: poll.totalVotes,
       isActive: poll.isActive,
-      hasVoted, // extra field to let frontend know
+      hasVoted,
     };
 
     return res.status(200).json({
@@ -304,4 +329,3 @@ export const getPollDetail = async (req, res, next) => {
     next(new ErrorHandler("Failed to perform task", 500));
   }
 };
-

@@ -1,130 +1,259 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import Header from "../components/Navbar"
-import Breadcrumb from "../components/Breadcrumb"
-import LoadingSpinner from "../components/LoadingSpinner"
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import Header from "../components/Navbar";
+import Breadcrumb from "../components/Breadcrumb";
+import { getContract } from "../utils/contract";
+import LoadingSpinner from "../components/LoadingSpinner";
+import { BACKEND_URL } from "../config";
 
 export default function CreatePoll() {
-  const navigate = useNavigate()
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     question: "",
     description: "",
     options: ["", ""],
     endTime: "",
     isPublic: true,
-    image: "",
-  })
+    image: null,
+  });
 
   const addOption = () => {
-    if (formData.options.length < 10) {
-      setFormData({
-        ...formData,
-        options: [...formData.options, ""],
-      })
-    }
-  }
+    if (formData.options.length < 10)
+      setFormData({ ...formData, options: [...formData.options, ""] });
+  };
 
   const removeOption = (index) => {
-    if (formData.options.length > 2) {
+    if (formData.options.length > 2)
       setFormData({
         ...formData,
         options: formData.options.filter((_, i) => i !== index),
-      })
-    }
-  }
+      });
+  };
 
   const updateOption = (index, value) => {
-    const newOptions = [...formData.options]
-    newOptions[index] = value
-    setFormData({
-      ...formData,
-      options: newOptions,
-    })
-  }
+    const newOptions = [...formData.options];
+    newOptions[index] = value;
+    setFormData({ ...formData, options: newOptions });
+  };
+
+  const handleFileChange = (e) => {
+    setFormData({ ...formData, image: e.target.files?.[0] || null });
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Creating poll:", formData)
-      setIsSubmitting(false)
-      navigate("/my-polls")
-    }, 2000)
-  }
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Please connect your wallet and authenticate first.");
+      }
+
+      const endMs = new Date(formData.endTime).getTime();
+      if (isNaN(endMs) || endMs <= Date.now()) {
+        throw new Error("End time must be in the future");
+      }
+
+      const fd = new FormData();
+      fd.append("question", formData.question);
+      fd.append("description", formData.description || "");
+      fd.append("options", JSON.stringify(formData.options));
+
+      const nowMs = Date.now();
+      fd.append("startTime", nowMs.toString());
+      fd.append("endTime", endMs.toString());
+      fd.append("visibility", formData.isPublic ? "Public" : "Private");
+
+      if (formData.image) {
+        fd.append("image0", formData.image);
+      }
+
+      console.log("📝 Creating poll with data:", {
+        question: formData.question,
+        options: formData.options,
+        visibility: formData.isPublic ? "Public" : "Private",
+      });
+
+      console.log("⏳ Step 1: Creating poll in backend...");
+      const backendRes = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL || BACKEND_URL}/api/poll/v1/createPoll`,
+        fd,
+        {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const backendData = backendRes.data;
+
+      if (!backendData.success) {
+        const msg = backendData?.message || backendData?.error || "Backend createPoll failed";
+        throw new Error(msg);
+      }
+
+      const pollFromBackend = backendData.poll;
+      if (!pollFromBackend || !pollFromBackend.pollId) {
+        throw new Error("Backend did not return pollId");
+      }
+
+      const pollId = pollFromBackend.pollId;
+      console.log("✅ Step 1 Complete: Poll created in backend with ID:", pollId);
+
+      console.log("⏳ Step 2: Creating poll on blockchain...");
+
+      try {
+        const { contract } = await getContract(true);
+
+        const startTimestamp = Math.floor(Date.now() / 1000) + 60;
+        const endTimestamp = Math.floor(endMs / 1000);
+
+        if (endTimestamp <= startTimestamp) {
+          throw new Error("End time must be at least 1 minute in the future");
+        }
+
+        const visibilityEnum = formData.isPublic ? 0 : 1;
+
+        console.log("📊 Blockchain transaction details:", {
+          pollId,
+          question: formData.question,
+          optionsCount: formData.options.length,
+          visibility: visibilityEnum === 0 ? "Public" : "Private",
+          startTimestamp: new Date(startTimestamp * 1000).toLocaleString(),
+          endTimestamp: new Date(endTimestamp * 1000).toLocaleString(),
+        });
+
+        const tx = await contract.createPoll(
+          pollId,
+          formData.question,
+          formData.options,
+          visibilityEnum,
+          startTimestamp,
+          endTimestamp
+        );
+
+        console.log("⏳ Transaction sent, waiting for confirmation...");
+        console.log("📝 Transaction hash:", tx.hash);
+
+        const receipt = await tx.wait();
+
+        console.log("✅ Step 2 Complete: Poll created on blockchain!");
+        console.log("📝 Block number:", receipt.blockNumber);
+        console.log("⛽ Gas used:", receipt.gasUsed.toString());
+
+        alert("🎉 Poll successfully created on both backend and blockchain!");
+      } catch (blockchainError) {
+        console.error("❌ Step 2 Failed: Blockchain error:", blockchainError);
+
+        let errorMsg = blockchainError?.message || blockchainError?.toString() || "Unknown blockchain error";
+
+        if (errorMsg.includes("user rejected")) {
+          errorMsg = "Transaction cancelled by user";
+        } else if (errorMsg.includes("insufficient funds")) {
+          errorMsg = "Insufficient funds for gas fees";
+        } else if (errorMsg.includes("Start time must be in future")) {
+          errorMsg = "Start time must be in the future (blockchain time)";
+        } else if (errorMsg.includes("Poll already exist")) {
+          errorMsg = "A poll with this ID already exists on the blockchain";
+        }
+
+        alert(
+          `⚠️ Poll created in backend but blockchain creation failed:\n\n${errorMsg}\n\n` +
+            `The poll exists in the database but won't appear on the blockchain. ` +
+            `You can try again or contact support.`
+        );
+
+        navigate("/my-polls");
+      }
+    } catch (err) {
+      console.error("❌ Poll creation failed:", err);
+
+      let errorMessage = "Unknown error occurred";
+
+      if (axios.isAxiosError(err)) {
+        errorMessage = err.response?.data?.message || err.response?.data?.error || err.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      alert("❌ Failed to create poll:\n\n" + errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-black">
       <Header />
-
       <main className="pt-20 pb-12 px-6">
         <div className="max-w-4xl mx-auto">
           <Breadcrumb />
 
-          {/* Page Header */}
           <div className="text-center mb-12" data-scroll-fade>
             <h1 className="text-4xl font-light text-white mb-4">
               <span className="font-medium italic instrument">Create</span> New Poll
             </h1>
-            <p className="text-white/70 text-sm max-w-2xl mx-auto">Design your poll with custom options and settings</p>
+            <p className="text-white/70 text-sm max-w-2xl mx-auto">
+              Design your poll with custom options and privacy settings
+            </p>
           </div>
 
-          {/* Create Poll Form */}
           <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Poll Question */}
-            <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6" data-scroll-slide-left>
+            {/* Question */}
+            <div className="bg-white/5 rounded-lg p-6">
               <label className="block text-white font-medium mb-4">Poll Question *</label>
               <input
                 type="text"
                 value={formData.question}
                 onChange={(e) => setFormData({ ...formData, question: e.target.value })}
                 placeholder="What would you like to ask?"
-                className="w-full px-4 py-3 bg-white/10 text-white placeholder-white/50 rounded-lg border border-white/20 focus:border-white/40 focus:outline-none transition-all duration-200"
+                className="w-full px-4 py-3 bg-white/10 text-white rounded-lg border border-white/20 focus:border-white/40 focus:outline-none"
                 required
                 disabled={isSubmitting}
               />
             </div>
 
-            {/* Poll Description */}
-            <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6" data-scroll-slide-right>
+            {/* Description */}
+            <div className="bg-white/5 rounded-lg p-6">
               <label className="block text-white font-medium mb-4">Description (Optional)</label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Provide additional context for your poll..."
+                placeholder="Add context..."
                 rows={4}
-                className="w-full px-4 py-3 bg-white/10 text-white placeholder-white/50 rounded-lg border border-white/20 focus:border-white/40 focus:outline-none resize-none transition-all duration-200"
+                className="w-full px-4 py-3 bg-white/10 text-white rounded-lg border border-white/20 focus:border-white/40 focus:outline-none"
                 disabled={isSubmitting}
               />
             </div>
 
-            {/* Poll Options */}
-            <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6" data-scroll-scale>
-              <div className="flex items-center justify-between mb-4">
-                <label className="text-white font-medium">Poll Options *</label>
+            {/* Options */}
+            <div className="bg-white/5 rounded-lg p-6">
+              <div className="flex justify-between mb-4">
+                <label className="text-white font-medium">Options *</label>
                 <span className="text-white/50 text-xs">{formData.options.length}/10 options</span>
               </div>
-
               <div className="space-y-3">
-                {formData.options.map((option, index) => (
-                  <div key={index} className="flex gap-3">
+                {formData.options.map((option, i) => (
+                  <div key={i} className="flex gap-3">
                     <input
                       type="text"
                       value={option}
-                      onChange={(e) => updateOption(index, e.target.value)}
-                      placeholder={`Option ${index + 1}`}
-                      className="flex-1 px-4 py-3 bg-white/10 text-white placeholder-white/50 rounded-lg border border-white/20 focus:border-white/40 focus:outline-none transition-all duration-200"
+                      onChange={(e) => updateOption(i, e.target.value)}
+                      placeholder={`Option ${i + 1}`}
+                      className="flex-1 px-4 py-3 bg-white/10 text-white rounded-lg border border-white/20 focus:border-white/40 focus:outline-none"
                       required
                       disabled={isSubmitting}
                     />
                     {formData.options.length > 2 && (
                       <button
                         type="button"
-                        onClick={() => removeOption(index)}
+                        onClick={() => removeOption(i)}
                         className="px-3 py-3 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all duration-200"
                         disabled={isSubmitting}
                       >
@@ -134,7 +263,6 @@ export default function CreatePoll() {
                   </div>
                 ))}
               </div>
-
               {formData.options.length < 10 && (
                 <button
                   type="button"
@@ -147,41 +275,59 @@ export default function CreatePoll() {
               )}
             </div>
 
-            {/* Poll Settings */}
+            {/* Settings */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* End Time */}
-              <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6" data-scroll-slide-left>
+              <div className="bg-white/5 rounded-lg p-6">
                 <label className="block text-white font-medium mb-4">End Time *</label>
                 <input
                   type="datetime-local"
                   value={formData.endTime}
                   onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                  className="w-full px-4 py-3 bg-white/10 text-white rounded-lg border border-white/20 focus:border-white/40 focus:outline-none transition-all duration-200"
+                  className="w-full px-4 py-3 bg-white/10 text-white rounded-lg border border-white/20 focus:border-white/40"
                   required
                   disabled={isSubmitting}
+                  min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
                 />
+                <p className="text-white/50 text-xs mt-2">Must be at least 1 minute in the future</p>
               </div>
 
-              {/* Privacy Setting */}
-              <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6" data-scroll-slide-right>
+              <div className="bg-white/5 rounded-lg p-6">
                 <label className="block text-white font-medium mb-4">Privacy Setting</label>
                 <select
                   value={formData.isPublic ? "public" : "private"}
                   onChange={(e) => setFormData({ ...formData, isPublic: e.target.value === "public" })}
-                  className="w-full px-4 py-3 bg-white/10 text-white rounded-lg border border-white/20 focus:border-white/40 focus:outline-none transition-all duration-200"
+                  className="w-full px-4 py-3 bg-white/10 text-white rounded-lg border border-white/20"
                   disabled={isSubmitting}
                 >
                   <option value="public">Public - Anyone can vote</option>
-                  <option value="private">Private - Only with poll ID</option>
+                  <option value="private">Private - With poll ID</option>
                 </select>
               </div>
             </div>
 
-            {/* Submit Buttons */}
-            <div className="flex gap-4 justify-center pt-8" data-scroll-fade>
+            {/* Image upload */}
+            <div className="bg-white/5 rounded-lg p-6">
+              <label className="block text-white font-medium mb-4">Poll Image *</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                disabled={isSubmitting}
+                required
+                className="text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white file:text-black hover:file:bg-white/90"
+              />
+              {formData.image && (
+                <p className="text-green-400 mt-2 text-sm flex items-center gap-2">
+                  ✓ Selected: {formData.image.name}
+                </p>
+              )}
+            </div>
+
+            {/* Submit */}
+            <div className="flex gap-4 justify-center pt-8">
               <button
                 type="button"
-                onClick={() => navigate.back()}
+                onClick={() => navigate(-1)}
                 className="px-8 py-3 bg-white/10 text-white rounded-full font-medium hover:bg-white/20 transition-all duration-200"
                 disabled={isSubmitting}
               >
@@ -206,5 +352,5 @@ export default function CreatePoll() {
         </div>
       </main>
     </div>
-  )
+  );
 }

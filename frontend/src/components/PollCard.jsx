@@ -1,6 +1,6 @@
 "use client"
 
-import {Link} from "react-router-dom"
+import { Link } from "react-router-dom"
 
 export default function PollCard({ poll, showActions = false, onShare, onDelete }) {
   const isActive = poll.isActive
@@ -8,25 +8,36 @@ export default function PollCard({ poll, showActions = false, onShare, onDelete 
   const timeLeft = isActive ? new Date(poll.endTime) - new Date() : 0
   const daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24))
 
+  // console.log(poll.pollId);
+
+  // ✅ Truncate creator name safely to 20 characters
+  const creatorName = poll.creator
+    ? poll.creator.length > 20
+      ? poll.creator.slice(0, 20) + "..."
+      : poll.creator
+    : "You"
+
   return (
     <div className="bg-white/5 backdrop-blur-sm rounded-lg overflow-hidden hover:bg-white/10 transition-all duration-300 group">
-      <Link to={`/poll/${poll.id}`}>
+      <Link to={poll.visibility === "Public" ? `/poll/${poll.pollId}` : `/private-poll/${poll.pollId}`}>
         <img
-          src={poll.image || "/placeholder.svg?height=200&width=400&query=voting poll"}
+          src={poll.img || "/placeholder.svg?height=200&width=400&query=voting poll"}
           alt={poll.title}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
         />
       </Link>
 
       <div className="p-6">
-        <Link to={`/poll/${poll.id}`}>
-          <h3 className="text-white font-medium mb-2 group-hover:text-white/90 cursor-pointer">{poll.title}</h3>
+        <Link to={poll.visibility === "Public" ? `/poll/${poll.pollId}` : `/private-poll/${poll.pollId}`}>
+          <h3 className="text-white font-medium mb-2 group-hover:text-white/90 cursor-pointer">
+            {poll.question}
+          </h3>
         </Link>
 
-        <p className="text-white/60 text-xs mb-4 line-clamp-2">{poll.description}</p>
+        <p className="text-white/60 text-xs mb-4 line-clamp-2">{poll.description || "Description of poll"}</p>
 
         <div className="flex items-center justify-between text-xs text-white/50 mb-4">
-          <span>by {poll.creator || "You"}</span>
+          <span>by {creatorName}</span>
           <span>{poll.totalVotes} votes</span>
         </div>
 
@@ -40,9 +51,13 @@ export default function PollCard({ poll, showActions = false, onShare, onDelete 
           </span>
 
           {isActive ? (
-            <span className="text-white/40 text-xs">{daysLeft > 0 ? `${daysLeft} days left` : "Ending soon"}</span>
+            <span className="text-white/40 text-xs">
+              {daysLeft > 0 ? `${daysLeft} days left` : "Ending soon"}
+            </span>
           ) : (
-            poll.winner && <span className="text-white/60 text-xs font-medium">Winner: {poll.winner}</span>
+            poll.winner && (
+              <span className="text-white/60 text-xs font-medium">Winner: {poll.winner}</span>
+            )
           )}
         </div>
 
@@ -50,7 +65,9 @@ export default function PollCard({ poll, showActions = false, onShare, onDelete 
           <div className="flex items-center justify-between mb-4">
             <span
               className={`px-2 py-1 text-xs rounded-full ${
-                poll.isPublic ? "bg-blue-500/20 text-blue-400" : "bg-yellow-500/20 text-yellow-400"
+                poll.isPublic
+                  ? "bg-blue-500/20 text-blue-400"
+                  : "bg-yellow-500/20 text-yellow-400"
               }`}
             >
               {poll.isPublic ? "Public" : "Private"}
