@@ -175,7 +175,7 @@ export default function PollDetails() {
   const daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black pt-7">
       <PollMain
         poll={poll}
         hasVoted={hasVoted}

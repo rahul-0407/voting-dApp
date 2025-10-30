@@ -229,7 +229,7 @@ export default function CreatePoll() {
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black pt-7">
       <Header />
       <main className="pt-20 pb-12 px-6">
         <div className="max-w-4xl mx-auto">

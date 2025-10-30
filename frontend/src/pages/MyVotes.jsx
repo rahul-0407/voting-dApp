@@ -152,7 +152,7 @@ export default function MyVotes() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black pt-7">
       <main className="pt-20 pb-12 px-6">
         <div className="max-w-6xl mx-auto">
           {/* Page Header */}
