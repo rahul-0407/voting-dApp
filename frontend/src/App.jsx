@@ -70,7 +70,8 @@ function App() {
           <Route path="/demo" element={<Demo />} />
           <Route path="/login" element={<Login/>}/>
           <Route path="/create-poll" element={<CreatePoll />} />
-          <Route path="/poll/:id" element={<PollDetails />} />
+          {/* <Route path="/poll/:id" element={<PollDetails />} /> */}
+          <Route path="/poll/:id" element={<PrivatePollDetail />} />
           <Route path="/private-poll/:id" element={<PrivatePollDetail />} />
           <Route path="/join-poll" element={<EnterPoll />} />
         </Routes>
