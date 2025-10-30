@@ -31,6 +31,7 @@ export default function PollDetails() {
 
         console.log("🔗 Connected contract:", contract.address);
         console.log("👤 Signer address:", signerAddress);
+        console.log(pollId)
 
         const polls = await contract.getAllPublicPolls(signerAddress);
         const chainPoll = polls.find((p) => p.pollId === pollId);

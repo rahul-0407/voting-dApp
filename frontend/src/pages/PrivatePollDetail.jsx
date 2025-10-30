@@ -31,11 +31,18 @@ export default function PollDetails() {
 
         console.log("🔗 Connected contract:", contract.address);
         console.log("👤 Signer address:", signerAddress);
+        console.log("hii")
 
-        const polls = await contract.getAllPublicPolls(signerAddress);
-        const chainPoll = polls.find((p) => p.pollId === pollId);
+        const cleanPollId = pollId?.trim() || "";
 
-        if (!chainPoll) {
+        console.log("🔍 Original pollId:", pollId);
+        console.log("🔍 Clean pollId:", cleanPollId);
+        console.log("🔍 PollId bytes:", new TextEncoder().encode(cleanPollId));
+
+        const chainPoll = await contract.getPollById(cleanPollId, signerAddress);
+        console.log("🧠 Raw chain poll:", chainPoll);
+
+        if (!chainPoll || !chainPoll.pollId) {
           setError("Poll not found on blockchain");
           return;
         }
@@ -55,7 +62,9 @@ export default function PollDetails() {
 
         // 🌐 2️⃣ Get backend data
         const res = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/poll/v1/pollDetail/${pollId}`,
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/poll/v1/pollDetail/${pollId}`,
           { withCredentials: true }
         );
         const backendPoll = res.data?.poll || {};
@@ -71,7 +80,9 @@ export default function PollDetails() {
         setPoll(mergedPoll);
 
         // 4️⃣ Check if user already voted (localStorage)
-        const votedPolls = JSON.parse(localStorage.getItem("votedPolls") || "{}");
+        const votedPolls = JSON.parse(
+          localStorage.getItem("votedPolls") || "{}"
+        );
         if (votedPolls[pollId]) {
           setHasVoted(true);
           setUserVote(votedPolls[pollId]);
@@ -88,30 +99,35 @@ export default function PollDetails() {
   }, [pollId]);
 
   const handleVote = (optionId) => {
-    if (hasVoted || !poll.isActive) return
+    if (hasVoted || !poll.isActive) return;
 
     // Update local storage to track vote
-    const votedPolls = JSON.parse(localStorage.getItem("votedPolls") || "{}")
-    votedPolls[params.id] = optionId
-    localStorage.setItem("votedPolls", JSON.stringify(votedPolls))
+    const votedPolls = JSON.parse(localStorage.getItem("votedPolls") || "{}");
+    votedPolls[params.id] = optionId;
+    localStorage.setItem("votedPolls", JSON.stringify(votedPolls));
 
     // Update poll data (in real app, this would be an API call)
-    const updatedPoll = { ...poll }
-    const optionIndex = updatedPoll.options.findIndex((opt) => opt.id === optionId)
+    const updatedPoll = { ...poll };
+    const optionIndex = updatedPoll.options.findIndex(
+      (opt) => opt.id === optionId
+    );
     if (optionIndex !== -1) {
-      updatedPoll.options[optionIndex].votes += 1
-      updatedPoll.totalVotes += 1
+      updatedPoll.options[optionIndex].votes += 1;
+      updatedPoll.totalVotes += 1;
 
       // Recalculate percentages
       updatedPoll.options.forEach((option) => {
-        option.percentage = ((option.votes / updatedPoll.totalVotes) * 100).toFixed(1)
-      })
+        option.percentage = (
+          (option.votes / updatedPoll.totalVotes) *
+          100
+        ).toFixed(1);
+      });
     }
 
-    setPoll(updatedPoll)
-    setHasVoted(true)
-    setUserVote(optionId)
-  }
+    setPoll(updatedPoll);
+    setHasVoted(true);
+    setUserVote(optionId);
+  };
 
   // 🌀 UI States
   if (isLoading) {
@@ -125,9 +141,13 @@ export default function PollDetails() {
   if (error || !poll) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center text-center text-white px-6">
-        <div className="w-24 h-24 mb-6 rounded-full bg-white/5 flex items-center justify-center text-4xl">❓</div>
+        <div className="w-24 h-24 mb-6 rounded-full bg-white/5 flex items-center justify-center text-4xl">
+          ❓
+        </div>
         <h1 className="text-2xl font-light mb-4">Poll Not Found</h1>
-        <p className="text-white/60 text-sm mb-8">{error || "The poll you're looking for doesn't exist."}</p>
+        <p className="text-white/60 text-sm mb-8">
+          {error || "The poll you're looking for doesn't exist."}
+        </p>
         <button
           onClick={() => navigate("/polls")}
           className="px-8 py-3 bg-white text-black rounded-full font-medium text-sm hover:bg-white/90 transition-all"
@@ -138,7 +158,9 @@ export default function PollDetails() {
     );
   }
 
-  const timeLeft = poll.isActive ? new Date(poll.endTime * 1000) - new Date() : 0;
+  const timeLeft = poll.isActive
+    ? new Date(poll.endTime * 1000) - new Date()
+    : 0;
   const daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
 
   return (
@@ -172,14 +194,18 @@ export default function PollDetails() {
               <div className="flex items-center gap-4">
                 <span
                   className={`px-3 py-1 text-sm rounded-full ${
-                    poll.isActive ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                    poll.isActive
+                      ? "bg-green-500/20 text-green-400"
+                      : "bg-red-500/20 text-red-400"
                   }`}
                 >
                   {poll.isActive ? "Active" : "Ended"}
                 </span>
                 <span
                   className={`px-3 py-1 text-sm rounded-full ${
-                    poll.visibility === "Public" ? "bg-blue-500/20 text-blue-400" : "bg-yellow-500/20 text-yellow-400"
+                    poll.visibility === "Public"
+                      ? "bg-blue-500/20 text-blue-400"
+                      : "bg-yellow-500/20 text-yellow-400"
                   }`}
                 >
                   {poll.visibility}
@@ -190,12 +216,18 @@ export default function PollDetails() {
                   ? daysLeft > 0
                     ? `${daysLeft} days left`
                     : "Ending soon"
-                  : `Ended on ${new Date(poll.endTime * 1000).toLocaleDateString()}`}
+                  : `Ended on ${new Date(
+                      poll.endTime * 1000
+                    ).toLocaleDateString()}`}
               </div>
             </div>
 
-            <h1 className="text-3xl md:text-4xl font-light text-white mb-4">{poll.question}</h1>
-            <p className="text-white/70 text-sm leading-relaxed mb-6">{poll.description}</p>
+            <h1 className="text-3xl md:text-4xl font-light text-white mb-4">
+              {poll.question}
+            </h1>
+            <p className="text-white/70 text-sm leading-relaxed mb-6">
+              {poll.description}
+            </p>
 
             <div className="flex items-center justify-between text-sm text-white/60">
               <span>Created by {poll.creator}</span>
@@ -239,7 +271,11 @@ export default function PollDetails() {
         </div>
       </main>
 
-      <ShareModal poll={poll} isOpen={shareModal.isOpen} onClose={() => setShareModal({ isOpen: false })} />
+      <ShareModal
+        poll={poll}
+        isOpen={shareModal.isOpen}
+        onClose={() => setShareModal({ isOpen: false })}
+      />
     </div>
   );
 }
