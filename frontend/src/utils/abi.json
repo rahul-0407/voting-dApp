@@ -352,6 +352,87 @@
   },
   {
     "type": "function",
+    "name": "getPollById",
+    "inputs": [
+      {
+        "name": "_pollId",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PollFactory.PollData",
+        "components": [
+          {
+            "name": "pollId",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "creator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "question",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "options",
+            "type": "string[]",
+            "internalType": "string[]"
+          },
+          {
+            "name": "visible",
+            "type": "uint8",
+            "internalType": "enum PollFactory.Visibility"
+          },
+          {
+            "name": "startTime",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "endTime",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "isActive",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "totalVotes",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "hasVoted",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "voteCounts",
+            "type": "uint256[]",
+            "internalType": "uint256[]"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "pollExists",
     "inputs": [
       {

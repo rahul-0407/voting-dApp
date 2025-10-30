@@ -1,35 +1,20 @@
-// SPDX-License-Identifier: UNLICENSED
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "../src/Verifier.sol";
-import "../src/PollFactory.sol";  // ✅ Changed from Voting.sol
+import "../src/PollFactory.sol";
+import "./HelperConfig.s.sol";
 
-contract DeployScript is Script {
-    function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        
-        vm.startBroadcast(deployerPrivateKey);
-        
-        console.log("Deploying Verifier...");
-        Groth16Verifier verifier = new Groth16Verifier();
-        console.log("Verifier:", address(verifier));
-        
-        console.log("Deploying PollFactory...");
-        PollFactory pollFactory = new PollFactory(address(verifier));
-        console.log("PollFactory:", address(pollFactory));
-        
+contract DeployVoting is Script {
+    function run() public {
+        HelperConfig helper = new HelperConfig();
+        HelperConfig.NetworkConfig memory config = helper.getConfig();
+
+        // Use config.contractOwner unless you're deploying locally
+        address owner = block.chainid == 31337 ? msg.sender : config.contractOwner;
+
+        vm.startBroadcast();
+        PollFactory pollFactory = new PollFactory();
         vm.stopBroadcast();
-        
-        // Save addresses
-        string memory addresses = string(abi.encodePacked(
-            '{\n',
-            '  "verifier": "', vm.toString(address(verifier)), '",\n',
-            '  "pollFactory": "', vm.toString(address(pollFactory)), '"\n',
-            '}'
-        ));
-        
-        vm.writeFile("./deployed-addresses.json", addresses);
-        console.log("\nAddresses saved to deployed-addresses.json");
     }
 }
