@@ -7,7 +7,7 @@ export default function ShareModal({ poll, isOpen, onClose }) {
 
   if (!isOpen) return null
 
-  const pollUrl = `${window.location.origin}/poll/${poll.id}`
+  const pollUrl = `${window.location.origin}/poll/${poll.pollId}`
 
   const copyToClipboard = async () => {
     try {

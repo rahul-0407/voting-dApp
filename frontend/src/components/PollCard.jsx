@@ -77,7 +77,7 @@ export default function PollCard({ poll, showActions = false, onShare, onDelete 
 
         {showActions && (
           <div className="flex gap-2 mt-4">
-            <Link to={`/poll/${poll.id}`} className="flex-1">
+            <Link to={poll.visibility === "Public" ? `/poll/${poll.pollId}` : `/private-poll/${poll.pollId}`}>
               <button className="w-full px-4 py-2 bg-white/10 text-white text-xs rounded-full hover:bg-white/20 transition-all duration-200">
                 View Details
               </button>
