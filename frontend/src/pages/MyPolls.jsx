@@ -91,7 +91,7 @@ export default function MyPolls() {
         };
       });
 
-      console.log("✅ Final merged polls:", merged);
+      // console.log("✅ Final merged polls:", merged);
       setMyPolls(merged);
     } catch (err) {
       console.error("❌ Unexpected error in fetchMyPolls:", err);

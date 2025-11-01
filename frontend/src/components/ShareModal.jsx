@@ -1,13 +1,16 @@
 "use client"
 
 import { useState } from "react"
+import { useLocation } from "react-router-dom"
 
 export default function ShareModal({ poll, isOpen, onClose }) {
   const [copied, setCopied] = useState(false)
+  const location = useLocation()
 
   if (!isOpen) return null
 
-  const pollUrl = `${window.location.origin}/poll/${poll.pollId}`
+  const pollUrl = `${window.location.origin}${window.location.pathname}`
+
 
   const copyToClipboard = async () => {
     try {
@@ -63,14 +66,14 @@ export default function ShareModal({ poll, isOpen, onClose }) {
             <label className="block text-white/70 text-sm mb-2">Share via</label>
             <div className="flex gap-2">
               <button
-                onClick={shareViaEmail}
-                className="flex-1 px-4 py-2 bg-white/10 text-white text-sm rounded hover:bg-white/20 transition-all duration-200"
+                onClick={shareViaEmail} disabled
+                className="flex-1 px-4 py-2 bg-white/10 text-white text-sm rounded opacity-50 cursor-not-allowed"
               >
                 Email
               </button>
               <button
-                onClick={shareViaTwitter}
-                className="flex-1 px-4 py-2 bg-white/10 text-white text-sm rounded hover:bg-white/20 transition-all duration-200"
+                onClick={shareViaTwitter} disabled
+                className="flex-1 px-4 py-2 bg-white/10 text-white text-sm rounded opacity-50 cursor-not-allowed"
               >
                 Twitter
               </button>
@@ -79,7 +82,7 @@ export default function ShareModal({ poll, isOpen, onClose }) {
 
           <div className="pt-4 border-t border-white/10">
             <p className="text-white/60 text-xs">
-              Poll ID: <span className="font-mono">{poll.id}</span>
+              Poll ID: <span className="font-mono">{poll.pollId}</span>
             </p>
           </div>
         </div>
