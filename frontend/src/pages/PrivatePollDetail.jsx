@@ -3,11 +3,10 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { getContract } from "../utils/contract"; // ✅ adjust path if needed
-import VotingInterface from "../components/VotingInterface";
-import PollResults from "../components/PollResults";
-import ShareModal from "../components/ShareModal";
+import { ethers } from "ethers";
+import { getContract } from "../utils/contract";
 import PollMain from "../components/PollMain";
+import ShareModal from "../components/ShareModal";
 
 export default function PollDetails() {
   const { id: pollId } = useParams();
@@ -19,37 +18,31 @@ export default function PollDetails() {
   const [hasVoted, setHasVoted] = useState(false);
   const [userVote, setUserVote] = useState(null);
   const [shareModal, setShareModal] = useState({ isOpen: false });
+  const [signerAddress, setSignerAddress] = useState(null);
+
+  // For allowed voters UI
+  const [allowedVoters, setAllowedVoters] = useState([""]);
+  const [isSubmittingVoters, setIsSubmittingVoters] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
 
   useEffect(() => {
     const loadPollDetails = async () => {
       try {
         if (!pollId) return;
 
-        // 🧩 1️⃣ Get blockchain data
         const { contract, signerAddress } = await getContract(true);
         if (!contract) throw new Error("Contract not loaded.");
         if (!signerAddress) throw new Error("Wallet not connected.");
 
-        console.log("🔗 Connected contract:", contract.address);
-        console.log("👤 Signer address:", signerAddress);
-        console.log("hii");
+        setSignerAddress(signerAddress);
 
         const cleanPollId = pollId?.trim() || "";
-
-        console.log("🔍 Original pollId:", pollId);
-        console.log("🔍 Clean pollId:", cleanPollId);
-        console.log("🔍 PollId bytes:", new TextEncoder().encode(cleanPollId));
-
-        const chainPoll = await contract.getPollById(
-          cleanPollId,
-          signerAddress
-        );
-        console.log("🧠 Raw chain poll:", chainPoll);
+        const chainPoll = await contract.getPollById(cleanPollId, signerAddress);
 
         const visibility = chainPoll.visible === 0n ? "Public" : "Private";
 
-        // ✅ Navigate based on visibility
-        if (visibility === "Private"){
+        // Redirect to private route if needed
+        if (visibility === "Private") {
           navigate(`/private-poll/${cleanPollId}`);
         }
 
@@ -71,16 +64,13 @@ export default function PollDetails() {
           creator: chainPoll.creator,
         };
 
-        // 🌐 2️⃣ Get backend data
+        // Backend data
         const res = await axios.get(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/poll/v1/pollDetail/${pollId}`,
+          `${import.meta.env.VITE_BACKEND_URL}/api/poll/v1/pollDetail/${pollId}`,
           { withCredentials: true }
         );
         const backendPoll = res.data?.poll || {};
 
-        // 🔀 3️⃣ Merge both
         const mergedPoll = {
           ...formatted,
           description: backendPoll.description || "No description provided.",
@@ -90,10 +80,13 @@ export default function PollDetails() {
 
         setPoll(mergedPoll);
 
-        // 4️⃣ Check if user already voted (localStorage)
-        const votedPolls = JSON.parse(
-          localStorage.getItem("votedPolls") || "{}"
-        );
+        // Check creator
+        if (signerAddress.toLowerCase() === formatted.creator.toLowerCase()) {
+          setIsCreator(true);
+        }
+
+        // Check if voted
+        const votedPolls = JSON.parse(localStorage.getItem("votedPolls") || "{}");
         if (votedPolls[pollId]) {
           setHasVoted(true);
           setUserVote(votedPolls[pollId]);
@@ -111,36 +104,57 @@ export default function PollDetails() {
 
   const handleVote = (optionId) => {
     if (hasVoted || !poll.isActive) return;
-
-    // Update local storage to track vote
     const votedPolls = JSON.parse(localStorage.getItem("votedPolls") || "{}");
-    votedPolls[params.id] = optionId;
+    votedPolls[pollId] = optionId;
     localStorage.setItem("votedPolls", JSON.stringify(votedPolls));
-
-    // Update poll data (in real app, this would be an API call)
-    const updatedPoll = { ...poll };
-    const optionIndex = updatedPoll.options.findIndex(
-      (opt) => opt.id === optionId
-    );
-    if (optionIndex !== -1) {
-      updatedPoll.options[optionIndex].votes += 1;
-      updatedPoll.totalVotes += 1;
-
-      // Recalculate percentages
-      updatedPoll.options.forEach((option) => {
-        option.percentage = (
-          (option.votes / updatedPoll.totalVotes) *
-          100
-        ).toFixed(1);
-      });
-    }
-
-    setPoll(updatedPoll);
     setHasVoted(true);
     setUserVote(optionId);
   };
 
-  // 🌀 UI States
+  // 🔹 Handle adding/removing voter inputs
+  const updateVoter = (index, value) => {
+    const updated = [...allowedVoters];
+    updated[index] = value;
+    setAllowedVoters(updated);
+  };
+
+  const addVoterField = () => {
+    if (allowedVoters.length < 10) setAllowedVoters([...allowedVoters, ""]);
+  };
+
+  const removeVoterField = (index) => {
+    if (allowedVoters.length > 1) {
+      const updated = allowedVoters.filter((_, i) => i !== index);
+      setAllowedVoters(updated);
+    }
+  };
+
+  // 🔹 Submit allowed voters to blockchain
+  const handleAddAllowedVoters = async () => {
+    try {
+      setIsSubmittingVoters(true);
+      const { contract } = await getContract(true);
+      const validVoters = allowedVoters.filter(
+        (v) => ethers.utils.isAddress(v) && v !== ethers.constants.AddressZero
+      );
+
+      if (validVoters.length === 0) {
+        alert("Please enter at least one valid Ethereum address");
+        return;
+      }
+
+      const tx = await contract.addAllowedVoter(poll.pollId, validVoters);
+      await tx.wait();
+      alert("✅ Allowed voters added successfully!");
+      setAllowedVoters([""]);
+    } catch (err) {
+      console.error("❌ Error adding voters:", err);
+      alert(err.message || "Transaction failed");
+    } finally {
+      setIsSubmittingVoters(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center text-white">
@@ -169,13 +183,8 @@ export default function PollDetails() {
     );
   }
 
-  const timeLeft = poll.isActive
-    ? new Date(poll.endTime * 1000) - new Date()
-    : 0;
-  const daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
-
   return (
-    <div className="min-h-screen bg-black pt-7">
+    <div className="min-h-screen bg-black pt-7 pb-20">
       <PollMain
         poll={poll}
         hasVoted={hasVoted}
@@ -185,6 +194,64 @@ export default function PollDetails() {
         handleVote={handleVote}
         navigate={navigate}
       />
+
+      {/* 🧩 Allowed Voters Section (Visible only to Creator of Private Poll) */}
+      {poll.visibility === "Private" && isCreator && (
+        <div className="max-w-4xl mx-auto mt-10 bg-white/5 rounded-lg p-6">
+          <div className="flex justify-between mb-4">
+            <label className="text-white font-medium">Allowed Voters *</label>
+            <span className="text-white/50 text-xs">{allowedVoters.length}/10 addresses</span>
+          </div>
+
+          <div className="space-y-3">
+            {allowedVoters.map((voter, i) => (
+              <div key={i} className="flex gap-3">
+                <input
+                  type="text"
+                  value={voter}
+                  onChange={(e) => updateVoter(i, e.target.value)}
+                  placeholder={`Voter address ${i + 1}`}
+                  className="flex-1 px-4 py-3 bg-white/10 text-white rounded-lg border border-white/20 focus:border-white/40 focus:outline-none"
+                  required
+                  disabled={isSubmittingVoters}
+                />
+                {allowedVoters.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeVoterField(i)}
+                    className="px-3 py-3 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all duration-200"
+                    disabled={isSubmittingVoters}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {allowedVoters.length < 10 && (
+            <button
+              type="button"
+              onClick={addVoterField}
+              className="mt-4 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all duration-200 text-sm"
+              disabled={isSubmittingVoters}
+            >
+              + Add Voter
+            </button>
+          )}
+
+          <div className="mt-6">
+            <button
+              onClick={handleAddAllowedVoters}
+              disabled={isSubmittingVoters}
+              className="px-6 py-3 bg-white text-black rounded-full font-medium text-sm hover:bg-white/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmittingVoters ? "Adding Voters..." : "Submit Allowed Voters"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <ShareModal
         poll={poll}
         isOpen={shareModal.isOpen}
