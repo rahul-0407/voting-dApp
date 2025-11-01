@@ -1187,4 +1187,75 @@ contract PollFactoryTest is Test {
         vm.expectRevert(bytes("Poll does not exist"));
         pollFactory.getPollById("non_existing_poll", user1);
     }
+
+    function testGetMyVotedPolls() public {
+    // ====== Step 1: Create a poll ======
+    string memory pollId = "poll123";
+    string memory question = "Who is the best superhero?";
+    string[] memory options = new string[](3);
+    options[0] = "Batman";
+    options[1] = "Superman";
+    options[2] = "Ironman";
+
+    vm.expectEmit(true, true, true, true);
+    emit PollCreated(
+        pollId,
+        owner,
+        PollFactory.Visibility.Public,
+        startTime,
+        endTime
+    );
+
+    pollFactory.createPoll(
+        pollId,
+        question,
+        options,
+        PollFactory.Visibility.Public,
+        startTime,
+        endTime
+    );
+
+    // ====== Step 2: Move time forward so poll is active ======
+    vm.warp(startTime + 10);
+
+    // ====== Step 3: user1 votes ======
+    vm.prank(user1);
+    vm.expectEmit(true, true, true, true);
+    emit VoteCasted(pollId, user1, "Batman");
+    pollFactory.vote(pollId, "Batman");
+
+    // ====== Step 4: user2 votes ======
+    vm.prank(user2);
+    vm.expectEmit(true, true, true, true);
+    emit VoteCasted(pollId, user2, "Superman");
+    pollFactory.vote(pollId, "Superman");
+
+    // ====== Step 5: Fetch voted polls for user1 ======
+    PollFactory.PollData[] memory votedPolls = pollFactory.getMyVotedPolls(user1);
+
+    // ====== Step 6: Assertions ======
+    assertEq(votedPolls.length, 1, "User1 should have 1 voted poll");
+
+    PollFactory.PollData memory pollData = votedPolls[0];
+
+    assertEq(pollData.pollId, pollId, "PollId mismatch");
+    assertEq(pollData.creator, owner, "Creator mismatch");
+    assertEq(pollData.isActive, true, "Poll should still be active");
+    assertEq(pollData.hasVoted, true, "User1 has voted should be true");
+
+    // Votes should be visible since user voted
+    uint256 batmanVotes = pollData.voteCounts[0];
+    uint256 supermanVotes = pollData.voteCounts[1];
+    uint256 ironmanVotes = pollData.voteCounts[2];
+
+    assertEq(batmanVotes, 1, "Batman votes should be 1");
+    assertEq(supermanVotes, 1, "Superman votes should be 1");
+    assertEq(ironmanVotes, 0, "Ironman votes should be 0");
+
+    // ====== Step 7: Verify user2 also gets proper data ======
+    PollFactory.PollData[] memory votedPollsUser2 = pollFactory.getMyVotedPolls(user2);
+    assertEq(votedPollsUser2.length, 1, "User2 should have 1 voted poll");
+    assertEq(votedPollsUser2[0].hasVoted, true, "User2 should have voted");
+}
+
 }

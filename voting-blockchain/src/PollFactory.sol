@@ -253,6 +253,7 @@ contract PollFactory {
         uint256 totalVotes;
         bool hasVoted;
         uint256[] voteCounts;
+        string userVote;
     }
 
     function getAllPublicPolls(
@@ -355,6 +356,11 @@ contract PollFactory {
             }
         }
 
+        string memory userVote = "";
+        if (_poll.hasVoted[_user]) {
+            userVote = _poll.votedOption[_user];
+        }
+
         return
             PollData({
                 pollId: _poll.pollId,
@@ -367,7 +373,8 @@ contract PollFactory {
                 isActive: _poll.isActive,
                 totalVotes: _poll.totalVotes,
                 hasVoted: _poll.hasVoted[_user],
-                voteCounts: voteCounts
+                voteCounts: voteCounts,
+                userVote: userVote
             });
     }
 }
