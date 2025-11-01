@@ -32,7 +32,7 @@ export default function MyPolls() {
         );
         if (res.data?.success && Array.isArray(res.data.polls)) {
           backendPolls = res.data.polls;
-          console.log("✅ Backend polls fetched:", backendPolls.length);
+          // console.log("✅ Backend polls fetched:", backendPolls.length);
         } else {
           console.warn("⚠️ Unexpected backend response:", res.data);
         }

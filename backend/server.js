@@ -3,13 +3,14 @@ import connectCloudinary from "./utils/cloudinary.js"
 import app from "./app.js";
 import Poll from "./model/poll.js";
 import cron from "node-cron";
+import {endPollOnChain} from "./utils/contractHelper.js"
 
 connectDB();
 connectCloudinary();
 
 const port = process.env.PORT || 5000;
 
-cron.schedule("* * * * *", async () => {
+cron.schedule("0 * * * *", async () => {
   console.log("🕒 Running scheduled poll check at:", new Date().toLocaleString());
 
   try {
@@ -30,7 +31,12 @@ cron.schedule("* * * * *", async () => {
       { $set: { isActive: false } }
     );
 
-    console.log(`✅ ${expiredPolls.length} poll(s) marked inactive.`);
+    console.log(`✅ ${expiredPolls.length} poll(s) marked inactive in DB.`);
+
+    // 2️⃣ Call blockchain endPoll for each expired poll
+    for (const poll of expiredPolls) {
+      await endPollOnChain(poll.pollId);
+    }
   } catch (err) {
     console.error("❌ Error in scheduled task:", err);
   }
