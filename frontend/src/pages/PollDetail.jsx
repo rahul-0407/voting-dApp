@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { getContract } from "../utils/contract"; // ✅ adjust path if needed
+import { ethers } from "ethers";
+import { getContract } from "../utils/contract";
 import VotingInterface from "../components/VotingInterface";
 import PollResults from "../components/PollResults";
 import ShareModal from "../components/ShareModal";
@@ -19,13 +20,13 @@ export default function PollDetails() {
   const [hasVoted, setHasVoted] = useState(false);
   const [userVote, setUserVote] = useState(null);
   const [shareModal, setShareModal] = useState({ isOpen: false });
+  const [isVoting, setIsVoting] = useState(false); // 🆕
 
   useEffect(() => {
     const loadPollDetails = async () => {
       try {
         if (!pollId) return;
 
-        // 🧩 1️⃣ Get blockchain data
         const { contract, signerAddress } = await getContract(true);
         if (!contract) throw new Error("Contract not loaded.");
         if (!signerAddress) throw new Error("Wallet not connected.");
@@ -54,16 +55,12 @@ export default function PollDetails() {
           creator: chainPoll.creator,
         };
 
-        // 🌐 2️⃣ Get backend data
         const res = await axios.get(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/poll/v1/pollDetail/${pollId}`,
+          `${import.meta.env.VITE_BACKEND_URL}/api/poll/v1/pollDetail/${pollId}`,
           { withCredentials: true }
         );
         const backendPoll = res.data?.poll || {};
 
-        // 🔀 3️⃣ Merge both
         const mergedPoll = {
           ...formatted,
           description: backendPoll.description || "No description provided.",
@@ -73,10 +70,8 @@ export default function PollDetails() {
 
         setPoll(mergedPoll);
 
-        // 4️⃣ Check if user already voted (localStorage)
-        const votedPolls = JSON.parse(
-          localStorage.getItem("votedPolls") || "{}"
-        );
+        // Check if user already voted
+        const votedPolls = JSON.parse(localStorage.getItem("votedPolls") || "{}");
         if (votedPolls[pollId]) {
           setHasVoted(true);
           setUserVote(votedPolls[pollId]);
@@ -92,38 +87,44 @@ export default function PollDetails() {
     loadPollDetails();
   }, [pollId]);
 
-  const handleVote = (optionId) => {
-    if (hasVoted || !poll.isActive) return;
+  // 🆕 --- VOTE FUNCTION ---
+  const handleVoteOnBlockchain = async (selectedOption) => {
+    try {
+      if (!poll || hasVoted || !poll.isActive) return;
+      setIsVoting(true);
 
-    // Update local storage to track vote
-    const votedPolls = JSON.parse(localStorage.getItem("votedPolls") || "{}");
-    votedPolls[params.id] = optionId;
-    localStorage.setItem("votedPolls", JSON.stringify(votedPolls));
+      const { contract } = await getContract(true);
+      const tx = await contract.vote(poll.pollId, selectedOption);
+      console.log("🟡 Sending vote tx:", tx.hash);
 
-    // Update poll data (in real app, this would be an API call)
-    const updatedPoll = { ...poll };
-    const optionIndex = updatedPoll.options.findIndex(
-      (opt) => opt.id === optionId
-    );
-    if (optionIndex !== -1) {
-      updatedPoll.options[optionIndex].votes += 1;
-      updatedPoll.totalVotes += 1;
+      await tx.wait();
+      console.log("✅ Vote successful!");
 
-      // Recalculate percentages
-      updatedPoll.options.forEach((option) => {
-        option.percentage = (
-          (option.votes / updatedPoll.totalVotes) *
-          100
-        ).toFixed(1);
-      });
+      // Store vote locally
+      const votedPolls = JSON.parse(localStorage.getItem("votedPolls") || "{}");
+      votedPolls[pollId] = selectedOption;
+      localStorage.setItem("votedPolls", JSON.stringify(votedPolls));
+
+      setHasVoted(true);
+      setUserVote(selectedOption);
+
+      // Optionally refresh total votes
+      const { contract: refreshedContract, signerAddress } = await getContract(true);
+      const refreshedPoll = await refreshedContract.getPollById(poll.pollId, signerAddress);
+      setPoll((prev) => ({
+        ...prev,
+        totalVotes: Number(refreshedPoll.totalVotes),
+        voteCounts: refreshedPoll.voteCounts.map((v) => Number(v)),
+      }));
+    } catch (err) {
+      console.error("❌ Error voting:", err);
+      alert(err.reason || err.message || "Vote failed");
+    } finally {
+      setIsVoting(false);
     }
-
-    setPoll(updatedPoll);
-    setHasVoted(true);
-    setUserVote(optionId);
   };
+  // 🆕 --- END VOTE FUNCTION ---
 
-  // 🌀 UI States
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center text-white">
@@ -152,11 +153,6 @@ export default function PollDetails() {
     );
   }
 
-  const timeLeft = poll.isActive
-    ? new Date(poll.endTime * 1000) - new Date()
-    : 0;
-  const daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
-
   return (
     <div className="min-h-screen bg-black">
       <PollMain
@@ -165,8 +161,9 @@ export default function PollDetails() {
         userVote={userVote}
         shareModal={shareModal}
         setShareModal={setShareModal}
-        handleVote={handleVote}
+        handleVote={handleVoteOnBlockchain} // 🆕 connect blockchain vote
         navigate={navigate}
+        isVoting={isVoting}
       />
 
       <ShareModal

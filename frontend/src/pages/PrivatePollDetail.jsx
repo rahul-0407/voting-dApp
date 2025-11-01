@@ -8,7 +8,7 @@ import { getContract } from "../utils/contract";
 import PollMain from "../components/PollMain";
 import ShareModal from "../components/ShareModal";
 
-export default function PollDetails() {
+export default function PrivatePollDetails() {
   const { id: pollId } = useParams();
   const navigate = useNavigate();
 
@@ -37,7 +37,10 @@ export default function PollDetails() {
         setSignerAddress(signerAddress);
 
         const cleanPollId = pollId?.trim() || "";
-        const chainPoll = await contract.getPollById(cleanPollId, signerAddress);
+        const chainPoll = await contract.getPollById(
+          cleanPollId,
+          signerAddress
+        );
 
         const visibility = chainPoll.visible === 0n ? "Public" : "Private";
 
@@ -59,14 +62,15 @@ export default function PollDetails() {
           startTime: Number(chainPoll.startTime),
           endTime: Number(chainPoll.endTime),
           isActive: chainPoll.isActive,
-          visibility: chainPoll.visible === 0 ? "Public" : "Private",
+          visibility, // ✅ use the normalized one here
           voteCounts: chainPoll.voteCounts.map((v) => Number(v)),
           creator: chainPoll.creator,
         };
-
         // Backend data
         const res = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/poll/v1/pollDetail/${pollId}`,
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/poll/v1/pollDetail/${pollId}`,
           { withCredentials: true }
         );
         const backendPoll = res.data?.poll || {};
@@ -86,7 +90,9 @@ export default function PollDetails() {
         }
 
         // Check if voted
-        const votedPolls = JSON.parse(localStorage.getItem("votedPolls") || "{}");
+        const votedPolls = JSON.parse(
+          localStorage.getItem("votedPolls") || "{}"
+        );
         if (votedPolls[pollId]) {
           setHasVoted(true);
           setUserVote(votedPolls[pollId]);
@@ -102,14 +108,59 @@ export default function PollDetails() {
     loadPollDetails();
   }, [pollId]);
 
-  const handleVote = (optionId) => {
-    if (hasVoted || !poll.isActive) return;
+  // 🔹 Handle vote submission (on-chain + backend)
+const handleVote = async (optionId) => {
+  try {
+    if (hasVoted || !poll.isActive) {
+      alert("You have already voted or the poll has ended.");
+      return;
+    }
+
+    const { contract, signerAddress } = await getContract(true);
+    if (!contract || !signerAddress) {
+      alert("Please connect your wallet first.");
+      return;
+    }
+
+    const selectedOption = poll.options[optionId];
+    if (!selectedOption) {
+      alert("Invalid option selected.");
+      return;
+    }
+
+    // 🔹 Step 1: Send transaction to blockchain
+    const tx = await contract.vote(poll.pollId, selectedOption);
+    await tx.wait();
+
+    // 🔹 Step 2: Save locally to prevent re-voting UI
     const votedPolls = JSON.parse(localStorage.getItem("votedPolls") || "{}");
-    votedPolls[pollId] = optionId;
+    votedPolls[poll.pollId] = optionId;
     localStorage.setItem("votedPolls", JSON.stringify(votedPolls));
     setHasVoted(true);
     setUserVote(optionId);
-  };
+
+    // 🔹 Step 3: Sync with backend (optional but recommended)
+    await axios.post(
+      `${import.meta.env.VITE_BACKEND_URL}/api/poll/v1/voteInPoll`,
+      {
+        pollId: poll.pollId,
+        option: selectedOption,
+      },
+      { withCredentials: true }
+    );
+
+    alert("✅ Vote successfully recorded!");
+  } catch (err) {
+    console.error("❌ Vote error:", err);
+    const reason =
+      err?.reason ||
+      err?.data?.message ||
+      err?.message ||
+      "Transaction failed";
+    alert(`Vote failed: ${reason}`);
+  }
+};
+
 
   // 🔹 Handle adding/removing voter inputs
   const updateVoter = (index, value) => {
@@ -134,9 +185,20 @@ export default function PollDetails() {
     try {
       setIsSubmittingVoters(true);
       const { contract } = await getContract(true);
-      const validVoters = allowedVoters.filter(
-        (v) => ethers.utils.isAddress(v) && v !== ethers.constants.AddressZero
-      );
+      if (!contract) throw new Error("Contract not loaded");
+
+      // normalize & validate addresses
+      const validVoters = allowedVoters
+        .map((v) => (v || "").trim())
+        .filter((v) => v.length > 0)
+        .filter((v) => {
+          try {
+            // ✅ ethers v6 uses ethers.isAddress()
+            return ethers.isAddress(v) && v !== ethers.ZeroAddress;
+          } catch {
+            return false;
+          }
+        });
 
       if (validVoters.length === 0) {
         alert("Please enter at least one valid Ethereum address");
@@ -149,7 +211,7 @@ export default function PollDetails() {
       setAllowedVoters([""]);
     } catch (err) {
       console.error("❌ Error adding voters:", err);
-      alert(err.message || "Transaction failed");
+      alert(err?.message || "Transaction failed");
     } finally {
       setIsSubmittingVoters(false);
     }
@@ -200,7 +262,9 @@ export default function PollDetails() {
         <div className="max-w-4xl mx-auto mt-10 bg-white/5 rounded-lg p-6">
           <div className="flex justify-between mb-4">
             <label className="text-white font-medium">Allowed Voters *</label>
-            <span className="text-white/50 text-xs">{allowedVoters.length}/10 addresses</span>
+            <span className="text-white/50 text-xs">
+              {allowedVoters.length}/10 addresses
+            </span>
           </div>
 
           <div className="space-y-3">
@@ -246,7 +310,9 @@ export default function PollDetails() {
               disabled={isSubmittingVoters}
               className="px-6 py-3 bg-white text-black rounded-full font-medium text-sm hover:bg-white/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmittingVoters ? "Adding Voters..." : "Submit Allowed Voters"}
+              {isSubmittingVoters
+                ? "Adding Voters..."
+                : "Submit Allowed Voters"}
             </button>
           </div>
         </div>
