@@ -1,8 +1,10 @@
 import express, {json} from "express";
 import "dotenv/config";
 import cors from "cors";
+import cron from "node-cron";
 import authRoutes from './routes/authRoutes.js';
 import pollRouter from "./routes/poll.js"
+import Poll from "./model/poll.js";
 import {errorMiddleware} from "./middleware/error.js"
 import cookieParser from "cookie-parser";
 
@@ -52,5 +54,8 @@ app.get("/", (req, res) => {
 
 
 app.use(errorMiddleware);
+
+
+
 
 export default app;
