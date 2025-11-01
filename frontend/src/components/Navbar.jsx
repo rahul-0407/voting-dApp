@@ -1,10 +1,11 @@
-
 import { Link, useLocation } from "react-router-dom";
 import { MainContext } from "../context/MainContext";
-import { useContext } from "react";
+import { useContext, useEffect, useState } from "react";
 
 export default function Header() {
   const location = useLocation();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const { walletAddress, connect } = useContext(MainContext);
 
   const navItems = [
     { name: "All Polls", path: "/polls" },
@@ -13,14 +14,26 @@ export default function Header() {
     { name: "Join Poll", path: "/join-poll" },
   ];
 
-  const { walletAddress, setWalletAddress,connect,disconnect } = useContext(MainContext);
-  
-    function shortAddress(addr) {
-      return addr ? `${addr.slice(0, 5)}...${addr.slice(-3)}` : "";
-    }
+  function shortAddress(addr) {
+    return addr ? `${addr.slice(0, 5)}...${addr.slice(-3)}` : "";
+  }
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <header className="fixed w-full z-20 flex items-center justify-between p-6 ">
+    <header
+      className={`fixed w-full z-20 flex items-center justify-between p-6 transition-all duration-300 ${
+        isScrolled
+          ? "bg-[rgba(20,20,20,0)] backdrop-blur-md ]"
+          : "bg-transparent"
+      }`}
+    >
       {/* Logo */}
       <Link to="/" className="flex items-center">
         <div className="flex items-center space-x-2">
@@ -48,7 +61,7 @@ export default function Header() {
         ))}
       </nav>
 
-      {/* Login Button Group with Arrow */}
+      {/* Login Button Group */}
       <div
         id="gooey-btn"
         className="relative flex items-center group"
