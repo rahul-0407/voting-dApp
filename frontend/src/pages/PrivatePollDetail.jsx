@@ -36,11 +36,9 @@ export default function PrivatePollDetails() {
 
         setSignerAddress(signerAddress);
 
-        const cleanPollId = pollId?.trim() || "";
-        const chainPoll = await contract.getPollById(
-          cleanPollId,
-          signerAddress
-        );
+        const cleanPollId = pollId.trim();
+        const chainPoll = await contract.getPollById(cleanPollId, signerAddress);
+        console.log("🧠 Raw poll data from contract:", chainPoll);
 
         const visibility = chainPoll.visible === 0n ? "Public" : "Private";
 
@@ -54,6 +52,10 @@ export default function PrivatePollDetails() {
           return;
         }
 
+        // Convert BigInts safely
+        const voteCounts = Array.from(chainPoll.voteCounts).map((v) => Number(v));
+        console.log("📊 Parsed voteCounts:", voteCounts);
+
         const formatted = {
           pollId: chainPoll.pollId,
           question: chainPoll.question,
@@ -62,15 +64,15 @@ export default function PrivatePollDetails() {
           startTime: Number(chainPoll.startTime),
           endTime: Number(chainPoll.endTime),
           isActive: chainPoll.isActive,
-          visibility, // ✅ use the normalized one here
-          voteCounts: chainPoll.voteCounts.map((v) => Number(v)),
+          visibility,
+          voteCounts,
           creator: chainPoll.creator,
+          hasVoted: chainPoll.hasVoted,
         };
+
         // Backend data
         const res = await axios.get(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/poll/v1/pollDetail/${pollId}`,
+          `${import.meta.env.VITE_BACKEND_URL}/api/poll/v1/pollDetail/${pollId}`,
           { withCredentials: true }
         );
         const backendPoll = res.data?.poll || {};
@@ -89,13 +91,9 @@ export default function PrivatePollDetails() {
           setIsCreator(true);
         }
 
-        // Check if voted
-        const votedPolls = JSON.parse(
-          localStorage.getItem("votedPolls") || "{}"
-        );
-        if (votedPolls[pollId]) {
+        // ✅ On-chain hasVoted check
+        if (formatted.hasVoted) {
           setHasVoted(true);
-          setUserVote(votedPolls[pollId]);
         }
       } catch (err) {
         console.error("❌ Error loading poll:", err);
@@ -109,58 +107,50 @@ export default function PrivatePollDetails() {
   }, [pollId]);
 
   // 🔹 Handle vote submission (on-chain + backend)
-const handleVote = async (optionId) => {
-  try {
-    if (hasVoted || !poll.isActive) {
-      alert("You have already voted or the poll has ended.");
-      return;
+  const handleVote = async (optionId) => {
+    try {
+      if (hasVoted || !poll.isActive) {
+        alert("You have already voted or the poll has ended.");
+        return;
+      }
+
+      const { contract, signerAddress } = await getContract(true);
+      if (!contract || !signerAddress) {
+        alert("Please connect your wallet first.");
+        return;
+      }
+
+      const selectedOption = poll.options[optionId];
+      if (!selectedOption) {
+        alert("Invalid option selected.");
+        return;
+      }
+
+      // 🔹 Step 1: Send transaction to blockchain
+      const tx = await contract.vote(poll.pollId, optionId); // use index, not option text
+      await tx.wait();
+
+      setHasVoted(true);
+      setUserVote(optionId);
+
+      // 🔹 Step 2: Sync with backend (optional)
+      await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/poll/v1/voteInPoll`,
+        {
+          pollId: poll.pollId,
+          optionIndex: optionId,
+        },
+        { withCredentials: true }
+      );
+
+      alert("✅ Vote successfully recorded!");
+    } catch (err) {
+      console.error("❌ Vote error:", err);
+      const reason =
+        err?.reason || err?.data?.message || err?.message || "Transaction failed";
+      alert(`Vote failed: ${reason}`);
     }
-
-    const { contract, signerAddress } = await getContract(true);
-    if (!contract || !signerAddress) {
-      alert("Please connect your wallet first.");
-      return;
-    }
-
-    const selectedOption = poll.options[optionId];
-    if (!selectedOption) {
-      alert("Invalid option selected.");
-      return;
-    }
-
-    // 🔹 Step 1: Send transaction to blockchain
-    const tx = await contract.vote(poll.pollId, selectedOption);
-    await tx.wait();
-
-    // 🔹 Step 2: Save locally to prevent re-voting UI
-    const votedPolls = JSON.parse(localStorage.getItem("votedPolls") || "{}");
-    votedPolls[poll.pollId] = optionId;
-    localStorage.setItem("votedPolls", JSON.stringify(votedPolls));
-    setHasVoted(true);
-    setUserVote(optionId);
-
-    // 🔹 Step 3: Sync with backend (optional but recommended)
-    await axios.post(
-      `${import.meta.env.VITE_BACKEND_URL}/api/poll/v1/voteInPoll`,
-      {
-        pollId: poll.pollId,
-        option: selectedOption,
-      },
-      { withCredentials: true }
-    );
-
-    alert("✅ Vote successfully recorded!");
-  } catch (err) {
-    console.error("❌ Vote error:", err);
-    const reason =
-      err?.reason ||
-      err?.data?.message ||
-      err?.message ||
-      "Transaction failed";
-    alert(`Vote failed: ${reason}`);
-  }
-};
-
+  };
 
   // 🔹 Handle adding/removing voter inputs
   const updateVoter = (index, value) => {
@@ -193,7 +183,6 @@ const handleVote = async (optionId) => {
         .filter((v) => v.length > 0)
         .filter((v) => {
           try {
-            // ✅ ethers v6 uses ethers.isAddress()
             return ethers.isAddress(v) && v !== ethers.ZeroAddress;
           } catch {
             return false;
@@ -250,6 +239,7 @@ const handleVote = async (optionId) => {
       <PollMain
         poll={poll}
         hasVoted={hasVoted}
+        isActive={poll.isActive}
         userVote={userVote}
         shareModal={shareModal}
         setShareModal={setShareModal}

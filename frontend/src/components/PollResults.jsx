@@ -41,16 +41,16 @@ export default function PollResults({ poll, userVote, hasVoted }) {
       <div className="space-y-4">
         {sortedOptions.map((option, index) => (
           <div
-            key={option.id}
+            key={index}
             className={`bg-white/5 backdrop-blur-sm rounded-lg p-6 ${
-              userVote === option.id ? "ring-2 ring-white/30" : ""
+              userVote === index ? "ring-2 ring-white/30" : ""
             }`}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center">
                 {index === 0 && !poll.isActive && <span className="text-yellow-400 mr-2 text-lg">👑</span>}
                 <span className="text-white font-medium">{option.text}</span>
-                {userVote === option.id && (
+                {userVote === index && (
                   <span className="ml-2 px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">Your Vote</span>
                 )}
               </div>

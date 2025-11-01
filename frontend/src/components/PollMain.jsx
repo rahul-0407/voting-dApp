@@ -8,6 +8,7 @@ import ShareModal from "./ShareModal";
 export default function PollMain({
   poll,
   hasVoted,
+  isActive,
   userVote,
   shareModal,
   setShareModal,
@@ -16,6 +17,7 @@ export default function PollMain({
 }) {
   const timeLeft = poll.isActive ? new Date(poll.endTime * 1000) - new Date() : 0;
   const daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
+  console.log(isActive)
 
   return (
     <main className="pt-20 pb-12 px-6">
@@ -79,7 +81,7 @@ export default function PollMain({
         </div>
 
         {/* Vote / Results */}
-        {poll.isActive && !hasVoted ? (
+        {isActive && !hasVoted ? (
           <VotingInterface poll={poll} onVote={handleVote} />
         ) : (
           <PollResults poll={poll} userVote={userVote} hasVoted={hasVoted} />
