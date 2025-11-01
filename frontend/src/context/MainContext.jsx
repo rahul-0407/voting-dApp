@@ -15,9 +15,9 @@ const MainContextProvider = ({ children }) => {
 
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [document, setDocuments] = useState([]);
-  const [chainDocuments, setChainDocuments] = useState([]);
-  const [loadingChainData, setLoadingChainData] = useState(false);
+  // const [document, setDocuments] = useState([]);
+  // const [chainDocuments, setChainDocuments] = useState([]);
+  // const [loadingChainData, setLoadingChainData] = useState(false);
 
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("userData");
@@ -76,22 +76,6 @@ const MainContextProvider = ({ children }) => {
       }
     }
 
-  // async function castVote(pollId, optionIndex) {
-  //   const { contract, signerAddress } = await getContract(true);
-  //   const proof = await generateVoteProof(optionIndex, pollId);
-
-  //   const tx = await contract.castVote(
-  //     pollId,
-  //     optionIndex,
-  //     proof.a,
-  //     proof.b,
-  //     proof.c,
-  //     proof.inputs
-  //   );
-
-  //   await tx.wait();
-  //   console.log("✅ Vote cast successfully!");
-  // }
 
   const authenticateUser = async (walletAddress) => {
     try {
@@ -136,64 +120,14 @@ const MainContextProvider = ({ children }) => {
     setUser(null);
     setIsAuthenticated(false);
     setAuthToken("");
-    setDocuments([]);
+    // setDocuments([]);
     localStorage.removeItem("address");
     localStorage.removeItem("userData");
     localStorage.removeItem("authToken");
     location.reload(true);
   };
 
-  // useEffect(() => {
-  //   if (!walletAddress) return;
-  //   loadUserDocuments();
-  // }, [walletAddress, authToken]);
 
-  const loadUserDocuments = async () => {
-    // try {
-    //   // Option A: Use existing endpoint (if no auth required)
-    //   const response = await axios.get(
-    //     `${
-    //       import.meta.env.VITE_BACKEND_URL
-    //     }/api/auth/v1/documents/${walletAddress}`,
-    //     {
-    //       withCredentials: true,
-    //       headers: {
-    //         Accept: "application/json",
-    //       },
-    //     }
-    //   );
-    //   if (response.data.success) {
-    //     setDocuments(response.data.documents);
-    //   }
-    //   console.log(response.data);
-    // } catch (error) {
-    //   console.error("Failed to load documents:", error);
-    // }
-  };
-
-  const getDataFromChain = async () => {
-    try {
-      setLoadingChainData(true);
-      const { contract } = await getContract(false); // false = read-only call
-
-      // Fetch docs for connected wallet (msg.sender inside contract)
-      const docs = await contract.getDocuments();
-
-      const parsedDocs = docs.map((doc, i) => ({
-        id: i + 1,
-        docType: doc.docType,
-        timestamp: new Date(Number(doc.timestamp) * 1000).toLocaleString(),
-        docHash: doc.docHash,
-      }));
-      console.log(parsedDocs);
-
-      setChainDocuments(parsedDocs);
-    } catch (error) {
-      console.error("Failed to load documents from contract:", error);
-    } finally {
-      setLoadingChainData(false);
-    }
-  };
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -235,20 +169,20 @@ const MainContextProvider = ({ children }) => {
     setSelectedWallet,
     isConnecting,
     setIsConnecting,
-    document,
-    setDocuments,
+    // document,
+    // setDocuments,
 
     // NEW values for authentication
     user, // { id, walletAddress, userDID, spaceName }
     isAuthenticated, // boolean
     authToken, // JWT token or session identifier
     disconnect, // function to disconnect
-    loadUserDocuments, // function to reload documents
+    // loadUserDocuments, // function to reload documents
     authenticateUser,
-    setChainDocuments,
-    getDataFromChain,
-    loadingChainData,
-    chainDocuments,
+    // setChainDocuments,
+    // getDataFromChain,
+    // loadingChainData,
+    // chainDocuments,
     // removeDocument, // function to authenticate user
   };
 
