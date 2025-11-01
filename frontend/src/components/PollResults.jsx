@@ -1,29 +1,31 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useContext } from "react"
 import { getContract } from "../utils/contract"
 import { ethers } from "ethers"
+import { MainContext } from "../context/MainContext"
 
 export default function PollResults({ poll, hasVoted }) {
   const [userVote, setUserVote] = useState(null)
+  const {walletAddress} = useContext(MainContext)
 
   useEffect(() => {
-    const fetchUserVote = async () => {
-      try {
-        console.log("hello")
-        if (hasVoted && poll?.pollId && userAddress) {
-          console.log("hii")
-          const contract = await getContract()
-          const vote = await contract.getUserVote(poll.pollId, userAddress)
-          console.log(vote)
-          setUserVote(vote)
-        }
-      } catch (err) {
-        console.error("Error fetching user vote:", err)
+  const fetchUserVote = async () => {
+    try {
+      if (hasVoted && poll?.pollId && walletAddress) {
+        const { contract } = await getContract()
+        const votes = await contract.getMyVotedPolls(walletAddress)
+        const voteData = votes.find(v => v.pollId === poll.pollId)
+        // console.log("voteData:", voteData)
+        setUserVote(voteData ? voteData.userVote : null)
       }
+    } catch (err) {
+      console.error("Error fetching user vote:", err)
     }
+  }
 
-    fetchUserVote()
-  }, [hasVoted, poll, userAddress])
+  fetchUserVote()
+}, [hasVoted, poll, walletAddress])
+
 
   const sortedOptions = [...poll.options].map((opt, index) => ({
     id: index,

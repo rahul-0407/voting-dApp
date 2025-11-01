@@ -192,6 +192,11 @@
             "name": "voteCounts",
             "type": "uint256[]",
             "internalType": "uint256[]"
+          },
+          {
+            "name": "userVote",
+            "type": "string",
+            "internalType": "string"
           }
         ]
       }
@@ -268,6 +273,11 @@
             "name": "voteCounts",
             "type": "uint256[]",
             "internalType": "uint256[]"
+          },
+          {
+            "name": "userVote",
+            "type": "string",
+            "internalType": "string"
           }
         ]
       }
@@ -344,6 +354,11 @@
             "name": "voteCounts",
             "type": "uint256[]",
             "internalType": "uint256[]"
+          },
+          {
+            "name": "userVote",
+            "type": "string",
+            "internalType": "string"
           }
         ]
       }
@@ -425,6 +440,11 @@
             "name": "voteCounts",
             "type": "uint256[]",
             "internalType": "uint256[]"
+          },
+          {
+            "name": "userVote",
+            "type": "string",
+            "internalType": "string"
           }
         ]
       }

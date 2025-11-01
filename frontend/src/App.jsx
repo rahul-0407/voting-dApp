@@ -12,7 +12,7 @@ import Login from "./pages/Login"
 import PollDetails from "./pages/PollDetail"
 import PrivatePollDetail from "./pages/PrivatePollDetail"
 import EnterPoll from "./pages/JoinPoll"
-import Demo from "./pages/Demo"
+// import Demo from "./pages/Demo"
 // import "./App.css"
 
 function App() {
@@ -67,7 +67,7 @@ function App() {
           <Route path="/polls" element={<AllPolls />} />
           <Route path="/my-polls" element={<MyPolls />} />
           <Route path="/my-votes" element={<MyVotes />} />
-          <Route path="/demo" element={<Demo />} />
+          {/* <Route path="/demo" element={<Demo />} /> */}
           <Route path="/login" element={<Login/>}/>
           <Route path="/create-poll" element={<CreatePoll />} />
           {/* <Route path="/poll/:id" element={<PollDetails />} /> */}
