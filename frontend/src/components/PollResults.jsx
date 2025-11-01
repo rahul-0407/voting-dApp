@@ -1,21 +1,50 @@
 "use client"
+import { useEffect, useState } from "react"
+import { getContract } from "../utils/contract"
+import { ethers } from "ethers"
 
-export default function PollResults({ poll, userVote, hasVoted }) {
-  console.log(poll.options)
-  console.log(userVote)
-  console.log(hasVoted)
-  const sortedOptions = [...poll.options].sort((a, b) => b.votes - a.votes)
-  const winningOption = sortedOptions[0]
+export default function PollResults({ poll, hasVoted }) {
+  const [userVote, setUserVote] = useState(null)
+
+  useEffect(() => {
+    const fetchUserVote = async () => {
+      try {
+        console.log("hello")
+        if (hasVoted && poll?.pollId && userAddress) {
+          console.log("hii")
+          const contract = await getContract()
+          const vote = await contract.getUserVote(poll.pollId, userAddress)
+          console.log(vote)
+          setUserVote(vote)
+        }
+      } catch (err) {
+        console.error("Error fetching user vote:", err)
+      }
+    }
+
+    fetchUserVote()
+  }, [hasVoted, poll, userAddress])
+
+  const sortedOptions = [...poll.options].map((opt, index) => ({
+    id: index,
+    text: opt,
+    votes: Number(poll.voteCounts[index]),
+    percentage:
+      poll.totalVotes > 0 ? ((Number(poll.voteCounts[index]) / Number(poll.totalVotes)) * 100).toFixed(1) : 0,
+  }))
+
+  const winningOption = sortedOptions.sort((a, b) => b.votes - a.votes)[0]
 
   return (
     <div className="space-y-6">
-      {/* Results Header */}
       <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6">
         {hasVoted && (
           <div className="mb-4 p-3 bg-green-500/20 border border-green-500/30 rounded-lg">
             <p className="text-green-400 text-sm">
               ✓ You voted for:{" "}
-              <span className="font-medium">{poll.options.find((opt) => opt.id === userVote)?.text}</span>
+              <span className="font-medium">
+                {userVote || "Loading..."}
+              </span>
             </p>
           </div>
         )}
@@ -46,15 +75,17 @@ export default function PollResults({ poll, userVote, hasVoted }) {
           <div
             key={index}
             className={`bg-white/5 backdrop-blur-sm rounded-lg p-6 ${
-              userVote === index ? "ring-2 ring-white/30" : ""
+              userVote === option.text ? "ring-2 ring-white/30" : ""
             }`}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center">
                 {index === 0 && !poll.isActive && <span className="text-yellow-400 mr-2 text-lg">👑</span>}
                 <span className="text-white font-medium">{option.text}</span>
-                {userVote === index && (
-                  <span className="ml-2 px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">Your Vote</span>
+                {userVote === option.text && (
+                  <span className="ml-2 px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">
+                    Your Vote
+                  </span>
                 )}
               </div>
               <div className="text-right">
@@ -63,10 +94,11 @@ export default function PollResults({ poll, userVote, hasVoted }) {
               </div>
             </div>
 
-            {/* Progress Bar */}
             <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden">
               <div
-                className={`h-full transition-all duration-1000 ease-out ${index === 0 ? "bg-white" : "bg-white/60"}`}
+                className={`h-full transition-all duration-1000 ease-out ${
+                  index === 0 ? "bg-white" : "bg-white/60"
+                }`}
                 style={{ width: `${option.percentage}%` }}
               />
             </div>
@@ -74,7 +106,6 @@ export default function PollResults({ poll, userVote, hasVoted }) {
         ))}
       </div>
 
-      {/* Results Summary */}
       <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6">
         <h4 className="text-white font-medium mb-4">Summary</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">

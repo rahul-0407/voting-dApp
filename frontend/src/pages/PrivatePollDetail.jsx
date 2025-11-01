@@ -16,7 +16,6 @@ export default function PrivatePollDetails() {
   const [isLoading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hasVoted, setHasVoted] = useState(false);
-  const [userVote, setUserVote] = useState(null);
   const [shareModal, setShareModal] = useState({ isOpen: false });
   const [signerAddress, setSignerAddress] = useState(null);
 
@@ -38,7 +37,7 @@ export default function PrivatePollDetails() {
 
         const cleanPollId = pollId.trim();
         const chainPoll = await contract.getPollById(cleanPollId, signerAddress);
-        console.log("🧠 Raw poll data from contract:", chainPoll);
+        // console.log("🧠 Raw poll data from contract:", chainPoll);
 
         const visibility = chainPoll.visible === 0n ? "Public" : "Private";
 
@@ -54,7 +53,7 @@ export default function PrivatePollDetails() {
 
         // Convert BigInts safely
         const voteCounts = Array.from(chainPoll.voteCounts).map((v) => Number(v));
-        console.log("📊 Parsed voteCounts:", voteCounts);
+        // console.log("📊 Parsed voteCounts:", voteCounts);
 
         const formatted = {
           pollId: chainPoll.pollId,
@@ -113,6 +112,7 @@ export default function PrivatePollDetails() {
         alert("You have already voted or the poll has ended.");
         return;
       }
+      
 
       const { contract, signerAddress } = await getContract(true);
       if (!contract || !signerAddress) {
@@ -127,11 +127,10 @@ export default function PrivatePollDetails() {
       }
 
       // 🔹 Step 1: Send transaction to blockchain
-      const tx = await contract.vote(poll.pollId, optionId); // use index, not option text
+      const tx = await contract.vote(poll.pollId, selectedOption); // use index, not option text
       await tx.wait();
 
       setHasVoted(true);
-      setUserVote(optionId);
 
       // 🔹 Step 2: Sync with backend (optional)
       await axios.post(
@@ -240,7 +239,6 @@ export default function PrivatePollDetails() {
         poll={poll}
         hasVoted={hasVoted}
         isActive={poll.isActive}
-        userVote={userVote}
         shareModal={shareModal}
         setShareModal={setShareModal}
         handleVote={handleVote}
