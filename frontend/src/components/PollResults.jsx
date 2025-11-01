@@ -1,6 +1,9 @@
 "use client"
 
 export default function PollResults({ poll, userVote, hasVoted }) {
+  console.log(poll.options)
+  console.log(userVote)
+  console.log(hasVoted)
   const sortedOptions = [...poll.options].sort((a, b) => b.votes - a.votes)
   const winningOption = sortedOptions[0]
 

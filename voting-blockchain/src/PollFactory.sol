@@ -20,6 +20,7 @@ contract PollFactory {
         mapping(address => bool) hasVoted;
         mapping(string => uint256) votes;
         uint256 totalVotes;
+        mapping(address => string) votedOption;
     }
 
     // store a array of all polls
@@ -129,6 +130,7 @@ contract PollFactory {
         }
 
         poll.hasVoted[msg.sender] = true;
+        poll.votedOption[msg.sender] = _option;
         poll.votes[_option]++;
         poll.totalVotes++;
 
