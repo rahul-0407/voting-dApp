@@ -35,17 +35,32 @@ contract PollFactory {
     mapping(address => string[]) public userVotedPolls;
 
     event PollCreated(
-        string indexed pollId, address indexed creator, Visibility visible, uint256 startTime, uint256 endTime
+        string indexed pollId,
+        address indexed creator,
+        Visibility visible,
+        uint256 startTime,
+        uint256 endTime
     );
 
     event AllowedVotersAdded(string indexed pollId, address[] voters);
-    event VoteCasted(string indexed pollId, address indexed voter, string option);
-    event PollEnded(string indexed pollId, string winningOption, uint256 winningVotes);
+    event VoteCasted(
+        string indexed pollId,
+        address indexed voter,
+        string option
+    );
+    event PollEnded(
+        string indexed pollId,
+        string winningOption,
+        uint256 winningVotes
+    );
 
     modifier onlyCreator(string memory _pollId) {
         require(pollExists[_pollId], "Poll does not exist");
         uint256 index = pollIndex[_pollId];
-        require(allPolls[index].creator == msg.sender, "Only poll creator can perform this action");
+        require(
+            allPolls[index].creator == msg.sender,
+            "Only poll creator can perform this action"
+        );
         _;
     }
 
@@ -74,7 +89,10 @@ contract PollFactory {
         uint256 _endTime
     ) external validPollId(_pollId) {
         require(bytes(_question).length > 0, "Question cannot be empty");
-        require(_options.length >= 2 && _options.length <= 10, "Must be two Options");
+        require(
+            _options.length >= 2 && _options.length <= 10,
+            "Must be two Options"
+        );
         require(_startTime >= block.timestamp, "Start time must be in future");
         require(_endTime > _startTime, "End time must be after start time");
 
@@ -104,7 +122,10 @@ contract PollFactory {
         emit PollCreated(_pollId, msg.sender, _visible, _startTime, _endTime);
     }
 
-    function addAllowedVoter(string memory _pollId, address[] memory _voters) external onlyCreator(_pollId) {
+    function addAllowedVoter(
+        string memory _pollId,
+        address[] memory _voters
+    ) external onlyCreator(_pollId) {
         uint256 index = pollIndex[_pollId];
         Poll storage poll = allPolls[index];
 
@@ -118,7 +139,10 @@ contract PollFactory {
         emit AllowedVotersAdded(_pollId, _voters);
     }
 
-    function vote(string memory _pollId, string memory _option) external pollActive(_pollId) {
+    function vote(
+        string memory _pollId,
+        string memory _option
+    ) external pollActive(_pollId) {
         uint256 index = pollIndex[_pollId];
         Poll storage poll = allPolls[index];
 
@@ -126,7 +150,10 @@ contract PollFactory {
         require(isValidOption(poll, _option), "Invalid option");
 
         if (poll.visible == Visibility.Private) {
-            require(isAllowedVoter(poll, msg.sender), "Not authorized to vote in this private poll");
+            require(
+                isAllowedVoter(poll, msg.sender),
+                "Not authorized to vote in this private poll"
+            );
         }
 
         poll.hasVoted[msg.sender] = true;
@@ -162,7 +189,10 @@ contract PollFactory {
 
         require(poll.isActive, "Poll already ended");
 
-        require(block.timestamp >= poll.endTime || msg.sender == poll.creator, "Poll not yet ended or not creator");
+        require(
+            block.timestamp >= poll.endTime || msg.sender == poll.creator,
+            "Poll not yet ended or not creator"
+        );
 
         terminatePoll(_pollId, index);
     }
@@ -185,16 +215,24 @@ contract PollFactory {
         emit PollEnded(_pollId, winningOption, maxVotes);
     }
 
-    function isValidOption(Poll storage _poll, string memory _option) internal view returns (bool) {
+    function isValidOption(
+        Poll storage _poll,
+        string memory _option
+    ) internal view returns (bool) {
         for (uint256 i = 0; i < _poll.options.length; i++) {
-            if (keccak256(bytes(_poll.options[i])) == keccak256(bytes(_option))) {
+            if (
+                keccak256(bytes(_poll.options[i])) == keccak256(bytes(_option))
+            ) {
                 return true;
             }
         }
         return false;
     }
 
-    function isAllowedVoter(Poll storage _poll, address _voter) internal view returns (bool) {
+    function isAllowedVoter(
+        Poll storage _poll,
+        address _voter
+    ) internal view returns (bool) {
         for (uint256 i = 0; i < _poll.allowedVoters.length; i++) {
             if (_poll.allowedVoters[i] == _voter) {
                 return true;
@@ -217,12 +255,16 @@ contract PollFactory {
         uint256[] voteCounts;
     }
 
-    function getAllPublicPolls(address _user) external view returns (PollData[] memory) {
+    function getAllPublicPolls(
+        address _user
+    ) external view returns (PollData[] memory) {
         uint256 count = 0;
         for (uint256 i = 0; i < allPolls.length; i++) {
             if (
-                allPolls[i].visible == Visibility.Public && allPolls[i].isActive
-                    && block.timestamp >= allPolls[i].startTime && block.timestamp <= allPolls[i].endTime
+                allPolls[i].visible == Visibility.Public &&
+                allPolls[i].isActive &&
+                block.timestamp >= allPolls[i].startTime &&
+                block.timestamp <= allPolls[i].endTime
             ) {
                 count++;
             }
@@ -233,8 +275,10 @@ contract PollFactory {
         for (uint256 i = 0; i < allPolls.length; i++) {
             Poll storage poll = allPolls[i];
             if (
-                poll.visible == Visibility.Public && poll.isActive && block.timestamp >= poll.startTime
-                    && block.timestamp <= poll.endTime
+                poll.visible == Visibility.Public &&
+                poll.isActive &&
+                block.timestamp >= poll.startTime &&
+                block.timestamp <= poll.endTime
             ) {
                 publicPolls[index] = _createPollData(poll, _user, false);
                 index++;
@@ -244,7 +288,9 @@ contract PollFactory {
         return publicPolls;
     }
 
-    function getMyCreatedPolls(address _user) external view returns (PollData[] memory) {
+    function getMyCreatedPolls(
+        address _user
+    ) external view returns (PollData[] memory) {
         string[] memory pollIds = userCreatedPolls[_user];
         PollData[] memory myPolls = new PollData[](pollIds.length);
 
@@ -257,7 +303,9 @@ contract PollFactory {
         return myPolls;
     }
 
-    function getMyVotedPolls(address _user) external view returns (PollData[] memory) {
+    function getMyVotedPolls(
+        address _user
+    ) external view returns (PollData[] memory) {
         string[] memory pollIds = userVotedPolls[_user];
         PollData[] memory votedPolls = new PollData[](pollIds.length);
 
@@ -270,7 +318,10 @@ contract PollFactory {
         return votedPolls;
     }
 
-    function getPollById(string memory _pollId, address _user) external view returns (PollData memory) {
+    function getPollById(
+        string memory _pollId,
+        address _user
+    ) external view returns (PollData memory) {
         require(pollExists[_pollId], "Poll does not exist");
 
         uint256 index = pollIndex[_pollId];
@@ -279,11 +330,23 @@ contract PollFactory {
         return _createPollData(poll, _user, false);
     }
 
-    function _createPollData(Poll storage _poll, address _user, bool _showResults)
-        internal
-        view
-        returns (PollData memory)
-    {
+    function getUserVote(
+        string memory _pollId,
+        address _user
+    ) external view returns (string memory) {
+        require(pollExists[_pollId], "Poll does not exist");
+        uint256 index = pollIndex[_pollId];
+        Poll storage poll = allPolls[index];
+
+        if (!poll.hasVoted[_user]) return "";
+        return poll.votedOption[_user];
+    }
+
+    function _createPollData(
+        Poll storage _poll,
+        address _user,
+        bool _showResults
+    ) internal view returns (PollData memory) {
         uint256[] memory voteCounts = new uint256[](_poll.options.length);
 
         if (_showResults || !_poll.isActive || _poll.hasVoted[_user]) {
@@ -292,18 +355,19 @@ contract PollFactory {
             }
         }
 
-        return PollData({
-            pollId: _poll.pollId,
-            creator: _poll.creator,
-            question: _poll.question,
-            options: _poll.options,
-            visible: _poll.visible,
-            startTime: _poll.startTime,
-            endTime: _poll.endTime,
-            isActive: _poll.isActive,
-            totalVotes: _poll.totalVotes,
-            hasVoted: _poll.hasVoted[_user],
-            voteCounts: voteCounts
-        });
+        return
+            PollData({
+                pollId: _poll.pollId,
+                creator: _poll.creator,
+                question: _poll.question,
+                options: _poll.options,
+                visible: _poll.visible,
+                startTime: _poll.startTime,
+                endTime: _poll.endTime,
+                isActive: _poll.isActive,
+                totalVotes: _poll.totalVotes,
+                hasVoted: _poll.hasVoted[_user],
+                voteCounts: voteCounts
+            });
     }
 }
