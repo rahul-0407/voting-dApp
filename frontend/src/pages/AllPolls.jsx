@@ -182,15 +182,7 @@ export default function AllPolls() {
             </>
           )}
 
-          {process.env.NODE_ENV === "development" && (
-            <div className="mt-8 p-4 bg-white/5 rounded-lg text-xs text-white/60">
-              <p>Debug Info:</p>
-              <p>• Total Polls: {polls.length}</p>
-              <p>• Active: {activePolls.length}</p>
-              <p>• Ended: {endedPolls.length}</p>
-              <p>• Wallet: {walletAddress || "Not connected"}</p>
-            </div>
-          )}
+          
         </div>
       </main>
     </div>

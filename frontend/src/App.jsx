@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, useNavigate,useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import PollDetails from "./pages/PollDetail";
 import PrivatePollDetail from "./pages/PrivatePollDetail";
 import EnterPoll from "./pages/JoinPoll";
+import Footer from "./components/Footer"
 // import Demo from "./pages/Demo"
 // import "./App.css"
 
@@ -66,6 +67,7 @@ function App() {
     const savedToken = localStorage.getItem("authToken");
 
     const isLoggedIn = savedAddress && savedUser && savedToken;
+    
 
     // ✅ If not logged in, restrict access except for "/" or "/login"
     if (!isLoggedIn && location.pathname !== "/" && location.pathname !== "/login") {
@@ -78,9 +80,11 @@ function App() {
     }
   }, [location.pathname, navigate]);
 
+  const isLoginPage = location.pathname === "/login"
+
   return (
     <div className="App">
-      <Navbar />
+      {!isLoginPage && <Navbar />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/polls" element={<AllPolls />} />
@@ -94,6 +98,7 @@ function App() {
         <Route path="/private-poll/:id" element={<PrivatePollDetail />} />
         <Route path="/join-poll" element={<EnterPoll />} />
       </Routes>
+      {!isLoginPage && <Footer />}
     </div>
   );
 }

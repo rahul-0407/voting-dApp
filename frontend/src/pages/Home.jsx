@@ -37,7 +37,7 @@ const Home = () => {
       {/* <FlexibilityEfficiency /> */}
 
       {/* Footer */}
-      <Footer />
+      {/* <Footer /> */}
     </div>
   )
 }
